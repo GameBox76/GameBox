@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neon Memory - Pro</title>
+<style>
+:root {
+  --neon-blue: #00f2ff;
+  --neon-pink: #ff00ea;
+  --neon-green: #00ff88;
+  --bg-dark: #050b14;
+}
+
+body {
+  margin: 0; font-family: 'Segoe UI', system-ui, sans-serif;
+  background-color: var(--bg-dark);
+  background: radial-gradient(circle at center, #102a43 0%, #050b14 100%);
+  color: #fff;
+  display: flex; flex-direction: column; align-items: center;
+  min-height: 100vh; overflow-x: hidden;
+}
+
+h1 { 
+  margin: 15px 0 5px; text-transform: uppercase; letter-spacing: 3px;
+  color: var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue);
+  font-size: 1.5rem;
+}
+
+/* --- Top Bar & Stats --- */
+#topBar {
+  display: flex; justify-content: space-around; align-items: center;
+  width: 100%; max-width: 500px; padding: 10px;
+  background: rgba(255, 255, 255, 0.05); border-radius: 15px; margin-bottom: 10px;
+}
+.stat-box { text-align: center; }
+.stat-label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
+.stat-value { font-size: 1.2rem; font-weight: bold; color: var(--neon-green); }
+
+/* --- Game Board --- */
+#board {
+  display: grid;
+  gap: 10px;
+  padding: 15px;
+  perspective: 1000px; /* Needed for 3D effect */
+  max-width: 95vw; /* Prevent going outside screen width */
+}
+
+/* --- 3D Card Styling --- */
+.card {
+  width: 65px; height: 65px;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.card.flip { transform: rotateY(180deg); }
+
+.card-face {
+  position: absolute; width: 100%; height: 100%;
+  backface-visibility: hidden;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.8rem;
+}
+
+.card-back {
+  background: #1a1a2e;
+  border: 2px solid var(--neon-blue);
+  box-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
+  color: var(--neon-blue);
+}
+
+.card-front {
+  background: #16213e;
+  border: 2px solid var(--neon-green);
+  transform: rotateY(180deg);
+}
+
+.card.matched .card-front {
+  border-color: var(--neon-pink);
+  box-shadow: 0 0 15px var(--neon-pink);
+}
+
+.card.wrong .card-front {
+  border-color: #ff4d4d;
+  animation: shake 0.4s;
+}
+
+@keyframes shake {
+  0%, 100% { transform: rotateY(180deg) translateX(0); }
+  25% { transform: rotateY(180deg) translateX(-5px); }
+  75% { transform: rotateY(180deg) translateX(5px); }
+}
+
+/* --- Popups --- */
+.popup {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+  display: none; place-items: center; z-index: 100;
+}
+.popup.show { display: grid; }
+.popup-content {
+  background: #1a1a2e; padding: 30px; border-radius: 20px;
+  text-align: center; border: 2px solid var(--neon-blue);
+  box-shadow: 0 0 30px var(--neon-blue);
+}
+button {
+  background: var(--neon-blue); border: none; padding: 10px 25px;
+  border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 15px;
+  transition: 0.3s;
+}
+button:hover { background: var(--neon-green); transform: scale(1.05); }
+
+#timer { margin-bottom: 5px; font-family: monospace; color: #aaa; }
+
+@media (max-width: 400px) {
+  .card { width: 55px; height: 55px; }
+}
+</style>
+</head>
+<body>
+
+<h1>Neon Memory</h1>
+
+<div id="topBar">
+  <div class="stat-box">
+    <div class="stat-label">Level</div>
+    <div id="level" class="stat-value">1</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-label">Chances</div>
+    <div id="chanceCount" class="stat-value">0</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-label">Best</div>
+    <div id="bestLevel" class="stat-value">1</div>
+  </div>
+  <button id="resetBtn" style="margin:0; padding:5px 10px; background:transparent; border:1px solid #444; color:#fff;">Reset All</button>
+</div>
+
+<div id="timer">TIME: 00:00</div>
+<div id="board"></div>
+
+<!-- Popups -->
+<div id="winPopup" class="popup">
+  <div class="popup-content">
+    <h2 style="color:var(--neon-green)">LEVEL COMPLETE!</h2>
+    <p>You're getting better.</p>
+    <button onclick="nextLevel()">Next Level</button>
+  </div>
+</div>
+
+<div id="lossPopup" class="popup">
+  <div class="popup-content">
+    <h2 style="color:#ff4d4d">GAME OVER</h2>
+    <p>Out of chances!</p>
+    <button onclick="retryLevel()">Retry Level</button>
+    <button onclick="fullReset()" style="background:#444">Start Over</button>
+  </div>
+</div>
+
+<script>
+// --- Dynamic Emoji Library ---
+const emojiPool = ['🍎','🍌','🍇','🍉','🍓','🥝','🍒','🍑','🥭','🍍','🥥','🥑','🍋','🍏','🍐','🥕','🌽','🥦','🥨','🍕','🌮','🍔','🍦','🍩','⚽','🎸','🎮','🚀','🌈','💎','🦄','🦁'];
+
+// --- Game State ---
+let level = parseInt(localStorage.getItem('neonMemory_level')) || 1;
+let bestLevel = parseInt(localStorage.getItem('neonMemory_best')) || 1;
+let tries = 0, chancesLeft = 0;
+let cards = [], firstCard = null, secondCard = null, lockBoard = false;
+let timerInterval, timeSeconds = 0;
+
+// --- Elements ---
+const boardEl = document.getElementById('board');
+const levelEl = document.getElementById('level');
+const chanceEl = document.getElementById('chanceCount');
+const bestEl = document.getElementById('bestLevel');
+const timerEl = document.getElementById('timer');
+
+// --- Initialization ---
+function init() {
+  bestEl.textContent = bestLevel;
+  startGame();
+}
+
+function startGame() {
+  clearInterval(timerInterval);
+  timeSeconds = 0;
+  updateTimerDisplay();
+  
+  firstCard = null; secondCard = null; lockBoard = true; // Lock during intro
+  
+  // Save Progress
+  localStorage.setItem('neonMemory_level', level);
+  if(level > bestLevel) {
+    bestLevel = level;
+    localStorage.setItem('neonMemory_best', bestLevel);
+    bestEl.textContent = bestLevel;
+  }
+
+  // Calculate pairs based on level
+  // Difficulty scaling: Starts easy, adds 1 pair every level
+  const pairCount = Math.min(2 + level, emojiPool.length);
+  const selectedEmojis = [...emojiPool].sort(() => 0.5 - Math.random()).slice(0, pairCount);
+  cards = [...selectedEmojis, ...selectedEmojis].sort(() => 0.5 - Math.random());
+
+  // Easier Gameplay: More chances (4x pair count instead of 2x)
+  chancesLeft = cards.length * 4; 
+  
+  levelEl.textContent = level;
+  chanceEl.textContent = chancesLeft;
+
+  renderBoard();
+  
+  // "Peek" Feature: Show cards for 1.5 seconds at start to make it easier
+  setTimeout(() => {
+    document.querySelectorAll('.card').forEach(c => c.classList.add('flip'));
+    setTimeout(() => {
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('flip'));
+      lockBoard = false;
+      startTimer();
+    }, 1500);
+  }, 500);
+}
+
+function renderBoard() {
+  boardEl.innerHTML = '';
+  const totalCards = cards.length;
+  
+  // Responsive Columns Calculation (Avoid going off-screen)
+  let cols = 4;
+  if (totalCards <= 8) cols = 4;
+  else if (totalCards <= 12) cols = 4;
+  else if (totalCards <= 20) cols = 5;
+  else cols = 6;
+
+  // On very small screens, cap at 4 columns
+  if (window.innerWidth < 400) cols = Math.min(cols, 4);
+
+  boardEl.style.gridTemplateColumns = `repeat(${cols}, auto)`;
+
+  cards.forEach((emoji, index) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.symbol = emoji;
+    card.innerHTML = `
+      <div class="card-face card-back">?</div>
+      <div class="card-face card-front">${emoji}</div>
+    `;
+    card.addEventListener('click', handleCardClick);
+    boardEl.appendChild(card);
+  });
+}
+
+function handleCardClick() {
+  if (lockBoard || this.classList.contains('flip') || this.classList.contains('matched')) return;
+
+  this.classList.add('flip');
+
+  if (!firstCard) {
+    firstCard = this;
+    return;
+  }
+
+  secondCard = this;
+  lockBoard = true;
+  
+  // Decrease chances
+  chancesLeft--;
+  chanceEl.textContent = chancesLeft;
+
+  if (firstCard.dataset.symbol === secondCard.dataset.symbol) {
+    // Match
+    firstCard.classList.add('matched');
+    secondCard.classList.add('matched');
+    checkWin();
+    resetTurn();
+  } else {
+    // Fail
+    firstCard.classList.add('wrong');
+    secondCard.classList.add('wrong');
+    setTimeout(() => {
+      firstCard.classList.remove('flip', 'wrong');
+      secondCard.classList.remove('flip', 'wrong');
+      resetTurn();
+      if (chancesLeft <= 0) showLoss();
+    }, 800);
+  }
+}
+
+function resetTurn() {
+  [firstCard, secondCard] = [null, null];
+  lockBoard = false;
+}
+
+function checkWin() {
+  const matched = document.querySelectorAll('.card.matched').length;
+  if (matched === cards.length) {
+    clearInterval(timerInterval);
+    setTimeout(() => {
+      document.getElementById('winPopup').classList.add('show');
+    }, 500);
+  }
+}
+
+function showLoss() {
+  clearInterval(timerInterval);
+  document.getElementById('lossPopup').classList.add('show');
+}
+
+// --- Navigation ---
+function nextLevel() {
+  level++;
+  document.getElementById('winPopup').classList.remove('show');
+  startGame();
+}
+
+function retryLevel() {
+  document.getElementById('lossPopup').classList.remove('show');
+  startGame();
+}
+
+function fullReset() {
+  level = 1;
+  localStorage.setItem('neonMemory_level', 1);
+  document.getElementById('lossPopup').classList.remove('show');
+  startGame();
+}
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if(confirm("Reset all progress back to Level 1?")) fullReset();
+});
+
+// --- Timer Logic ---
+function startTimer() {
+  timerInterval = setInterval(() => {
+    timeSeconds++;
+    updateTimerDisplay();
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const m = Math.floor(timeSeconds / 60).toString().padStart(2, '0');
+  const s = (timeSeconds % 60).toString().padStart(2, '0');
+  timerEl.textContent = `TIME: ${m}:${s}`;
+}
+
+// Start
+init();
+</script>
+
+</body>
+</html>

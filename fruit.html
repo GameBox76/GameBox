@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape">
+    <title>Fruit Slice Landscape Pro</title>
+    <style>
+        :root {
+            --primary: #FFD700;
+            --danger: #FF3B30;
+            --accent: #00FBFF;
+        }
+
+        * {
+            box-sizing: border-box;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #050505;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            color: white;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Landscape Orientation Lock Hint */
+        @media (orientation: portrait) {
+            #portrait-warning { display: flex; }
+        }
+
+        #portrait-warning {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* UI Styling */
+        .ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px 30px;
+            pointer-events: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            z-index: 10;
+        }
+
+        .score-val {
+            font-size: 42px;
+            font-weight: 900;
+            color: var(--primary);
+            margin: 0;
+        }
+
+        .best-val {
+            font-size: 14px;
+            color: var(--accent);
+            opacity: 0.8;
+        }
+
+        .hearts-row {
+            display: flex;
+            gap: 10px;
+            font-size: 28px;
+            margin-top: 5px;
+        }
+
+        .heart { transition: all 0.4s ease; }
+        .heart.lost { opacity: 0; transform: scale(3) rotate(45deg); filter: blur(10px); }
+
+        .pause-btn {
+            pointer-events: auto;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: white;
+            transition: 0.2s;
+        }
+
+        /* Overlays */
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            text-align: center;
+        }
+
+        .overlay.active { display: flex; }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 30px 60px;
+            border-radius: 30px;
+        }
+
+        .btn-play {
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: 800;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 20px;
+            text-transform: uppercase;
+        }
+
+        #flash {
+            position: fixed;
+            inset: 0;
+            background: red;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 99;
+        }
+    </style>
+</head>
+<body>
+
+<div id="portrait-warning">
+    <div style="font-size: 50px;">🔄</div>
+    <h2>Please Rotate Your Device</h2>
+    <p>This game is best played in Landscape Mode.</p>
+</div>
+
+<div id="game-container">
+    <canvas id="canvas"></canvas>
+    <div id="flash"></div>
+
+    <div class="ui-container">
+        <div>
+            <div id="scoreTxt" class="score-val">0</div>
+            <div id="bestTxt" class="best-val">BEST: 0</div>
+            <div class="hearts-row" id="heartsRow">
+                <span class="heart">❤️</span>
+                <span class="heart">❤️</span>
+                <span class="heart">❤️</span>
+            </div>
+        </div>
+        <div class="pause-btn" id="pauseBtn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+        </div>
+    </div>
+
+    <!-- Screens -->
+    <div id="startOverlay" class="overlay active">
+        <div class="glass-card">
+            <h1 style="font-size: 48px; margin: 0;">FRUIT SLICE</h1>
+            <p style="color: #aaa;">Slice the fruits. Avoid the bombs.</p>
+            <button class="btn-play" id="startBtn">Play</button>
+        </div>
+    </div>
+
+    <div id="pauseOverlay" class="overlay">
+        <div class="glass-card">
+            <h1>PAUSED</h1>
+            <button class="btn-play" id="resumeBtn">Resume</button>
+        </div>
+    </div>
+
+    <div id="overOverlay" class="overlay">
+        <div class="glass-card">
+            <h1 style="color: var(--danger);">GAME OVER</h1>
+            <div style="font-size: 24px;">Score: <span id="finalScore" style="color: var(--primary)">0</span></div>
+            <button class="btn-play" id="retryBtn">Try Again</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const FRUIT_COLORS = {
+    "🍓": "#FF4D4D", "🍒": "#D1001C", "🍎": "#FF2B2B", "🍉": "#2ECC71",
+    "🍑": "#FFB3BA", "🍊": "#FF9F43", "🍈": "#C5E1A5", "🍋": "#FFF323",
+    "🍐": "#D4E157", "🍌": "#FFEE58", "🍍": "#F9A825", "🥭": "#FF8F00",
+    "🍏": "#AEEA00", "🍇": "#9B59B6"
+};
+
+const CONFIG = {
+    gravity: 0.12,
+    spawnRate: 70,
+    launchPower: { min: 11, max: 14 },
+    drift: 4,
+    bombRate: 0.15,
+};
+
+class GameAudio {
+    constructor() { this.ctx = null; }
+    init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+    play(freq, type, dur, vol) {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        g.gain.setValueAtTime(vol, this.ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(); osc.stop(this.ctx.currentTime + dur);
+    }
+}
+
+class Particle {
+    constructor(x, y, color) {
+        this.x = x; this.y = y; this.color = color;
+        this.vx = (Math.random() - 0.5) * 12;
+        this.vy = (Math.random() - 0.5) * 12;
+        this.life = 1.0;
+        this.decay = 0.02 + Math.random() * 0.02;
+    }
+    update() {
+        this.x += this.vx; this.y += this.vy;
+        this.vy += 0.2; this.life -= this.decay;
+    }
+}
+
+class Fruit {
+    constructor(w, h) {
+        this.isBomb = Math.random() < CONFIG.bombRate;
+        const keys = Object.keys(FRUIT_COLORS);
+        this.emoji = this.isBomb ? "💣" : keys[Math.floor(Math.random() * keys.length)];
+        this.color = this.isBomb ? "#FFF" : FRUIT_COLORS[this.emoji];
+        this.radius = 45;
+        this.x = Math.random() * (w - 200) + 100;
+        this.y = h + 100;
+        this.vx = (Math.random() - 0.5) * CONFIG.drift * 2;
+        this.vy = -(Math.random() * (CONFIG.launchPower.max - CONFIG.launchPower.min) + CONFIG.launchPower.min);
+        this.rotation = 0;
+        this.rv = (Math.random() - 0.5) * 0.15;
+        this.active = true;
+        this.parts = [];
+    }
+    update() {
+        if (this.active) {
+            this.x += this.vx; this.y += this.vy; this.vy += CONFIG.gravity;
+            this.rotation += this.rv;
+        } else {
+            this.parts.forEach(p => {
+                p.x += p.vx; p.y += p.vy; p.vy += CONFIG.gravity;
+                p.r += p.rv;
+            });
+        }
+    }
+    slice() {
+        this.active = false;
+        this.parts = [
+            { x: this.x, y: this.y, vx: this.vx - 3, vy: this.vy - 2, r: this.rotation, rv: -0.1, side: 'l' },
+            { x: this.x, y: this.y, vx: this.vx + 3, vy: this.vy + 1, r: this.rotation, rv: 0.1, side: 'r' }
+        ];
+    }
+}
+
+class Game {
+    constructor() {
+        this.canvas = document.getElementById('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.audio = new GameAudio();
+        this.score = 0;
+        this.highScore = parseInt(localStorage.getItem('fruitBest')) || 0;
+        this.lives = 3;
+        this.isPaused = false;
+        this.isPlaying = false;
+        this.fruits = [];
+        this.particles = [];
+        this.trail = [];
+        this.frameCount = 0;
+        this.init();
+    }
+
+    init() {
+        window.addEventListener('resize', () => this.resize());
+        this.resize();
+
+        const move = (e) => {
+            if (!this.isPlaying || this.isPaused) return;
+            const x = e.touches ? e.touches[0].clientX : e.clientX;
+            const y = e.touches ? e.touches[0].clientY : e.clientY;
+            this.trail.push({x, y});
+            if (this.trail.length > 10) this.trail.shift();
+            this.checkCuts();
+        };
+
+        this.canvas.addEventListener('mousemove', move);
+        this.canvas.addEventListener('touchmove', (e) => { e.preventDefault(); move(e); }, {passive: false});
+        window.addEventListener('mouseup', () => this.trail = []);
+        window.addEventListener('touchend', () => this.trail = []);
+
+        document.getElementById('startBtn').onclick = () => this.start();
+        document.getElementById('retryBtn').onclick = () => this.start();
+        document.getElementById('pauseBtn').onclick = (e) => { e.stopPropagation(); this.togglePause(); };
+        document.getElementById('resumeBtn').onclick = () => this.togglePause();
+
+        this.updateHUD();
+    }
+
+    resize() {
+        this.w = window.innerWidth;
+        this.h = window.innerHeight;
+        this.canvas.width = this.w;
+        this.canvas.height = this.h;
+    }
+
+    start() {
+        this.audio.init();
+        this.score = 0;
+        this.lives = 3;
+        this.fruits = [];
+        this.particles = [];
+        this.isPlaying = true;
+        this.isPaused = false;
+        this.frameCount = 0;
+        
+        document.getElementById('startOverlay').classList.remove('active');
+        document.getElementById('pauseOverlay').classList.remove('active');
+        document.getElementById('overOverlay').classList.remove('active');
+        this.updateHUD();
+        this.loop();
+    }
+
+    togglePause() {
+        if (!this.isPlaying) return;
+        this.isPaused = !this.isPaused;
+        document.getElementById('pauseOverlay').classList.toggle('active', this.isPaused);
+        if (!this.isPaused) this.loop();
+    }
+
+    updateHUD() {
+        document.getElementById('scoreTxt').innerText = this.score;
+        document.getElementById('bestTxt').innerText = `BEST: ${this.highScore}`;
+        const hearts = document.getElementById('heartsRow').children;
+        for (let i = 0; i < 3; i++) hearts[i].classList.toggle('lost', i >= this.lives);
+    }
+
+    checkCuts() {
+        if (this.trail.length < 2) return;
+        const p1 = this.trail[this.trail.length - 2];
+        const p2 = this.trail[this.trail.length - 1];
+
+        this.fruits.forEach(f => {
+            if (!f.active) return;
+            const d = this.distToSegment(f.x, f.y, p1.x, p1.y, p2.x, p2.y);
+            if (d < f.radius) {
+                f.slice();
+                if (f.isBomb) {
+                    this.hitBomb();
+                } else {
+                    this.score += 10;
+                    this.audio.play(600, 'sine', 0.1, 0.1);
+                    this.createSplash(f);
+                    this.updateHUD();
+                }
+            }
+        });
+    }
+
+    createSplash(f) {
+        for(let i=0; i<12; i++) this.particles.push(new Particle(f.x, f.y, f.color));
+    }
+
+    hitBomb() {
+        this.lives--;
+        this.score = Math.max(0, this.score - 50);
+        this.audio.play(80, 'sawtooth', 0.5, 0.3);
+        this.updateHUD();
+        const flash = document.getElementById('flash');
+        flash.style.opacity = '1';
+        setTimeout(() => flash.style.opacity = '0', 100);
+        if (this.lives <= 0) this.gameOver();
+    }
+
+    gameOver() {
+        this.isPlaying = false;
+        if (this.score > this.highScore) {
+            this.highScore = this.score;
+            localStorage.setItem('fruitBest', this.highScore);
+        }
+        document.getElementById('finalScore').innerText = this.score;
+        document.getElementById('overOverlay').classList.add('active');
+    }
+
+    distToSegment(px, py, x1, y1, x2, y2) {
+        const l2 = (x1-x2)**2 + (y1-y2)**2;
+        if (l2 === 0) return Math.sqrt((px-x1)**2 + (py-y1)**2);
+        let t = Math.max(0, Math.min(1, ((px-x1)*(x2-x1) + (py-y1)*(y2-y1)) / l2));
+        return Math.sqrt((px - (x1 + t*(x2-x1)))**2 + (py - (y1 + t*(y2-y1)))**2);
+    }
+
+    loop() {
+        if (!this.isPlaying || this.isPaused) return;
+
+        this.ctx.fillStyle = 'rgba(5, 5, 5, 0.4)';
+        this.ctx.fillRect(0, 0, this.w, this.h);
+
+        if (this.frameCount++ % CONFIG.spawnRate === 0) this.fruits.push(new Fruit(this.w, this.h));
+
+        // Draw Splash Particles
+        this.particles.forEach((p, i) => {
+            p.update();
+            this.ctx.globalAlpha = p.life;
+            this.ctx.fillStyle = p.color;
+            this.ctx.beginPath();
+            this.ctx.arc(p.x, p.y, 4, 0, Math.PI*2);
+            this.ctx.fill();
+            if (p.life <= 0) this.particles.splice(i, 1);
+        });
+        this.ctx.globalAlpha = 1;
+
+        // Draw Fruits
+        this.fruits.forEach((f, i) => {
+            f.update();
+            this.ctx.save();
+            this.ctx.font = "70px Arial";
+            this.ctx.textAlign = "center";
+            this.ctx.textBaseline = "middle";
+            if (f.active) {
+                this.ctx.translate(f.x, f.y);
+                this.ctx.rotate(f.rotation);
+                this.ctx.fillText(f.emoji, 0, 0);
+            } else {
+                f.parts.forEach(p => {
+                    this.ctx.save();
+                    this.ctx.translate(p.x, p.y);
+                    this.ctx.rotate(p.r);
+                    this.ctx.beginPath();
+                    p.side === 'l' ? this.ctx.rect(-100, -100, 100, 200) : this.ctx.rect(0, -100, 100, 200);
+                    this.ctx.clip();
+                    this.ctx.fillText(f.emoji, 0, 0);
+                    this.ctx.restore();
+                });
+            }
+            this.ctx.restore();
+            if (f.y > this.h + 200) this.fruits.splice(i, 1);
+        });
+
+        // Trail
+        if (this.trail.length > 1) {
+            this.ctx.beginPath();
+            this.ctx.strokeStyle = "rgba(255,255,255,0.8)";
+            this.ctx.lineWidth = 5;
+            this.ctx.lineCap = "round";
+            this.ctx.moveTo(this.trail[0].x, this.trail[0].y);
+            for(let i=1; i<this.trail.length; i++) this.ctx.lineTo(this.trail[i].x, this.trail[i].y);
+            this.ctx.stroke();
+        }
+
+        requestAnimationFrame(() => this.loop());
+    }
+}
+
+new Game();
+</script>
+</body>
+</html>

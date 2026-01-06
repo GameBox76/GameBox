@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ultra Repeater - Numbered Edition</title>
+    <style>
+        :root {
+            --neon: #00f2ff;
+            --accent: #7000ff;
+            --surface: #12121a;
+            --panel: #1c1c28;
+            --text-dim: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: #050508;
+            color: #e2e8f0;
+            font-family: -apple-system, system-ui, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            padding: 15px 20px;
+            background: var(--surface);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .logo {
+            font-weight: 800;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            color: var(--neon);
+            text-transform: uppercase;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            overflow-y: auto;
+            gap: 12px;
+            padding-bottom: 100px;
+        }
+
+        .card {
+            background: var(--panel);
+            border-radius: 16px;
+            padding: 16px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        textarea {
+            width: 100%;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 12px;
+            color: white;
+            font-size: 16px;
+            resize: none;
+            outline: none;
+            min-height: 70px;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .input-box {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .input-box label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            font-weight: bold;
+        }
+
+        input, select {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 10px;
+            color: white;
+            font-size: 14px;
+            width: 100%;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .toggle-container input {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--neon);
+            cursor: pointer;
+        }
+
+        .toggle-label {
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .output-card {
+            flex: 1;
+            background: #000;
+            border-radius: 16px;
+            border: 1px solid var(--neon);
+            display: flex;
+            flex-direction: column;
+            min-height: 180px;
+        }
+
+        #output {
+            padding: 15px;
+            font-family: 'SF Mono', 'Courier New', monospace;
+            font-size: 14px;
+            color: #4ade80;
+            white-space: pre-wrap;
+            word-break: break-all;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .bottom-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(18, 18, 26, 0.98);
+            backdrop-filter: blur(10px);
+            padding: 12px 15px calc(12px + env(safe-area-inset-bottom));
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        button {
+            flex: 1;
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-primary { background: var(--neon); color: #000; }
+        .btn-secondary { background: rgba(255,255,255,0.08); color: white; max-width: 55px; }
+        button:active { transform: scale(0.92); }
+
+        .ui-icon-copy {
+            width: 12px; height: 16px; border: 2px solid currentColor; border-radius: 2px;
+            position: relative;
+        }
+        .ui-icon-copy::after {
+            content: ''; position: absolute; top: -4px; left: 3px;
+            width: 12px; height: 16px; border: 2px solid currentColor; border-radius: 2px; opacity: 0.4;
+        }
+
+        .ui-icon-trash {
+            width: 12px; height: 14px; border: 2px solid currentColor; border-top: 0;
+            position: relative;
+        }
+        .ui-icon-trash::after {
+            content: ''; position: absolute; top: -3px; left: -2px; width: 16px; height: 2px; background: currentColor;
+        }
+
+        #notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: var(--accent);
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: bold;
+            transition: 0.3s;
+            z-index: 1000;
+        }
+
+        .show-toast { transform: translateX(-50%) translateY(0px) !important; }
+
+        .stats-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            color: var(--text-dim);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="notification">Action Performed</div>
+
+    <header>
+        <div class="logo">Repeater <span style="color:white">X</span></div>
+        <div class="stats-badge" id="statLabel">Memory: 0KB</div>
+    </header>
+
+    <main>
+        <div class="card">
+            <textarea id="input" placeholder="Enter text to repeat..."></textarea>
+            
+            <div class="controls-grid">
+                <div class="input-box">
+                    <label>Count</label>
+                    <input type="number" id="count" value="50" min="1" max="100000">
+                </div>
+                <div class="input-box">
+                    <label>Separator</label>
+                    <select id="sep">
+                        <option value="\n">New Line</option>
+                        <option value=" ">Space</option>
+                        <option value=", ">Comma</option>
+                        <option value="custom">Custom...</option>
+                    </select>
+                </div>
+            </div>
+
+            <input type="text" id="customInput" placeholder="Enter custom separator" style="display:none; margin-top:10px;">
+
+            <label class="toggle-container" for="addNum">
+                <input type="checkbox" id="addNum">
+                <span class="toggle-label">Include Row Numbers (1. 2. 3.)</span>
+            </label>
+        </div>
+
+        <div class="output-card">
+            <div id="output">Output preview...</div>
+        </div>
+    </main>
+
+    <div class="bottom-bar">
+        <button class="btn-secondary" onclick="clearAll()">
+            <div class="ui-icon-trash"></div>
+        </button>
+        <button class="btn-primary" onclick="generate()">
+            GENERATE
+        </button>
+        <button class="btn-secondary" onclick="copy()">
+            <div class="ui-icon-copy"></div>
+        </button>
+    </div>
+
+    <script>
+        const output = document.getElementById('output');
+        const input = document.getElementById('input');
+        const count = document.getElementById('count');
+        const sep = document.getElementById('sep');
+        const custom = document.getElementById('customInput');
+        const addNum = document.getElementById('addNum');
+        const toast = document.getElementById('notification');
+
+        sep.addEventListener('change', () => {
+            custom.style.display = sep.value === 'custom' ? 'block' : 'none';
+        });
+
+        function notify(msg) {
+            toast.innerText = msg;
+            toast.classList.add('show-toast');
+            setTimeout(() => toast.classList.remove('show-toast'), 2000);
+        }
+
+        function generate() {
+            const val = input.value;
+            const iterations = parseInt(count.value);
+            const shouldNumber = addNum.checked;
+            let s = sep.value === 'custom' ? custom.value : sep.value;
+            if (s === '\\n') s = '\n';
+
+            if (!val) return notify("Input is empty!");
+            if (iterations > 100000) return notify("Limit: 100,000");
+
+            output.innerText = "Building...";
+            
+            setTimeout(() => {
+                try {
+                    let result = "";
+                    if (shouldNumber) {
+                        // Map and join for high performance with numbers
+                        result = Array.from({ length: iterations }, (_, i) => `${i + 1}. ${val}`).join(s);
+                    } else {
+                        result = new Array(iterations).fill(val).join(s);
+                    }
+                    
+                    output.innerText = result;
+                    const size = (result.length / 1024).toFixed(1);
+                    document.getElementById('statLabel').innerText = `Size: ${size}KB`;
+                } catch (e) {
+                    notify("Out of memory!");
+                }
+            }, 20);
+        }
+
+        function copy() {
+            const txt = output.innerText;
+            if (!txt || txt === "Output preview...") return notify("Nothing to copy!");
+            
+            const temp = document.createElement('textarea');
+            temp.value = txt;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            
+            notify("Copied!");
+        }
+
+        function clearAll() {
+            input.value = "";
+            output.innerText = "Output preview...";
+            document.getElementById('statLabel').innerText = "Memory: 0KB";
+        }
+
+        function setHeight() {
+            document.body.style.height = window.innerHeight + 'px';
+        }
+        window.addEventListener('resize', setHeight);
+        setHeight();
+    </script>
+</body>
+</html>

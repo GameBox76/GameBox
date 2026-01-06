@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tic Tac Toe Pro</title>
+
+<style>
+:root{
+ --bg:#050509;
+ --panel:#1c1c2b;
+ --red:#ff3366;
+ --blue:#00ccff;
+ --green:#2cff7a;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+
+body{
+ min-height:100vh;
+ background:radial-gradient(circle at top,#1e1e2e,#050509);
+ font-family:Segoe UI,sans-serif;
+ color:white;
+ display:flex;
+ justify-content:center;
+ align-items:center;
+}
+
+/* ===== POPUPS ===== */
+.overlay{
+ position:fixed;
+ inset:0;
+ background:rgba(0,0,0,.8);
+ display:flex;
+ justify-content:center;
+ align-items:center;
+ z-index:10;
+}
+
+.popup{
+ background:var(--panel);
+ width:90%;
+ max-width:320px;
+ padding:25px;
+ border-radius:20px;
+ text-align:center;
+ animation:pop .4s ease;
+}
+
+@keyframes pop{
+ from{transform:scale(.8);opacity:0}
+ to{transform:scale(1);opacity:1}
+}
+
+.popup h2{
+ margin-bottom:15px;
+ background:linear-gradient(45deg,var(--red),var(--blue));
+ -webkit-background-clip:text;
+ -webkit-text-fill-color:transparent;
+}
+
+.popup button,select{
+ width:100%;
+ margin:8px 0;
+ padding:12px;
+ border:none;
+ border-radius:12px;
+ font-weight:bold;
+ cursor:pointer;
+}
+
+.mode{background:var(--blue);color:black}
+select{background:var(--green)}
+.start{background:var(--red);color:white}
+.reset{background:var(--green)}
+.back{background:var(--red);color:white}
+
+/* ===== GAME ===== */
+.game{
+ display:flex;
+ flex-direction:column;
+ gap:10px;
+ width:100%;
+ max-width:360px;
+}
+
+.info{
+ background:var(--panel);
+ padding:10px 15px;
+ border-radius:15px;
+ text-align:center;
+ display:flex;
+ justify-content:space-between;
+}
+
+.controls{
+ display:flex;
+ gap:10px;
+}
+
+.controls button{
+ flex:1;
+ padding:10px;
+ border:none;
+ border-radius:12px;
+ font-weight:bold;
+ cursor:pointer;
+}
+
+.board{
+ display:grid;
+ grid-template-columns:repeat(3,1fr);
+ gap:10px;
+ background:var(--panel);
+ padding:15px;
+ border-radius:18px;
+}
+
+.cell{
+ aspect-ratio:1/1;
+ display:flex;
+ justify-content:center;
+ align-items:center;
+ font-size:2.5rem;
+ background:#0e0e18;
+ border-radius:12px;
+ cursor:pointer;
+ transition:.2s;
+}
+
+.cell:active{transform:scale(.9)}
+.X{color:var(--red);text-shadow:0 0 15px var(--red)}
+.O{color:var(--blue);text-shadow:0 0 15px var(--blue)}
+
+.hidden{display:none}
+</style>
+</head>
+
+<body>
+
+<!-- ===== SELECT POPUP ===== -->
+<div class="overlay" id="selectPopup">
+ <div class="popup">
+  <h2>Select Game</h2>
+  <button class="mode" onclick="setMode('human')">Human vs Human</button>
+  <button class="mode" onclick="setMode('ai')">Human vs AI</button>
+
+  <select id="level" disabled>
+   <option value="easy">Easy</option>
+   <option value="normal">Normal</option>
+   <option value="hard">Hard</option>
+  </select>
+
+  <button class="start" onclick="startGame()">START</button>
+ </div>
+</div>
+
+<!-- ===== WIN POPUP ===== -->
+<div class="overlay hidden" id="winPopup">
+ <div class="popup">
+  <h2 id="winnerText">Winner</h2>
+  <button class="reset" onclick="resetGame(true)">Play Again</button>
+  <button class="back" onclick="goBack()">Back</button>
+ </div>
+</div>
+
+<!-- ===== GAME ===== -->
+<div class="game">
+ <div class="info">
+  <div id="modeTxt">Mode: -</div>
+  <div id="timeTxt">Time: 0s</div>
+ </div>
+
+ <div class="board" id="board">
+  <div class="cell" data-i="0"></div>
+  <div class="cell" data-i="1"></div>
+  <div class="cell" data-i="2"></div>
+  <div class="cell" data-i="3"></div>
+  <div class="cell" data-i="4"></div>
+  <div class="cell" data-i="5"></div>
+  <div class="cell" data-i="6"></div>
+  <div class="cell" data-i="7"></div>
+  <div class="cell" data-i="8"></div>
+ </div>
+
+ <div class="controls">
+  <button class="reset" onclick="resetGame()">Reset</button>
+  <button class="back" onclick="goBack()">Back</button>
+ </div>
+</div>
+
+<script>
+let board=Array(9).fill('');
+let player='X';
+let mode='',level='easy';
+let timer=0,interval;
+
+const cells=[...document.querySelectorAll('.cell')];
+const winCombo=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+function setMode(m){
+ mode=m;
+ document.getElementById('level').disabled=m!=='ai';
+}
+
+function startGame(){
+ if(!mode)return alert("Select mode!");
+ level=document.getElementById('level').value;
+ selectPopup.classList.add('hidden');
+ modeTxt.textContent=mode==='ai'?`Mode: AI (${level})`:'Mode: Human';
+ resetGame(true); // fresh start
+}
+
+function startTimer(){
+ clearInterval(interval);
+ timer=0;
+ interval=setInterval(()=>{
+  timer++;
+  timeTxt.textContent=`Time: ${timer}s`;
+ },1000);
+}
+
+function resetGame(isFullReset=false){
+ board.fill('');
+ cells.forEach(c=>{
+  c.textContent='';
+  c.className='cell';
+ });
+ player='X';
+ clearInterval(interval);
+ startTimer();
+ winPopup.classList.add('hidden');
+
+ // agar Play Again ya Reset button hua, mode & level same rehta
+ if(isFullReset){} // nothing to change
+}
+
+function goBack(){
+ clearInterval(interval);
+ mode='';
+ level='easy';
+ selectPopup.classList.remove('hidden');
+ winPopup.classList.add('hidden');
+ resetGame(); // clear board
+}
+
+function clickCell(e){
+ let i=e.target.dataset.i;
+ if(board[i]||checkWin())return;
+ if(mode==='ai'&&player==='O')return;
+
+ move(i,player);
+ let r=checkWin();
+ if(r)return endGame(r);
+
+ player=player==='X'?'O':'X';
+ if(mode==='ai')setTimeout(aiMove,300);
+}
+
+function move(i,p){
+ board[i]=p;
+ cells[i].textContent=p;
+ cells[i].classList.add(p);
+}
+
+function aiMove(){
+ let i= level==='easy'?rand():best();
+ move(i,'O');
+ let r=checkWin();
+ if(r)return endGame(r);
+ player='X';
+}
+
+function rand(){
+ let e=board.map((v,i)=>v==''?i:null).filter(v=>v!=null);
+ return e[Math.floor(Math.random()*e.length)];
+}
+
+function best(){
+ let best=-Infinity,m;
+ for(let i=0;i<9;i++)if(!board[i]){
+  board[i]='O';
+  let s=minimax(board,0,false);
+  board[i]='';
+  if(s>best){best=s;m=i}
+ }
+ return m;
+}
+
+function minimax(b,d,isMax){
+ let r=checkWin(b);
+ if(r==='O')return 10-d;
+ if(r==='X')return d-10;
+ if(r==='Draw')return 0;
+
+ let best=isMax?-Infinity:Infinity;
+ for(let i=0;i<9;i++)if(!b[i]){
+  b[i]=isMax?'O':'X';
+  best=isMax?Math.max(best,minimax(b,d+1,!isMax)):Math.min(best,minimax(b,d+1,!isMax));
+  b[i]='';
+ }
+ return best;
+}
+
+function checkWin(b=board){
+ for(let c of winCombo){
+  let[a,b1,c1]=c;
+  if(b[a]&&b[a]==b[b1]&&b[a]==b[c1])return b[a];
+ }
+ return b.includes('')?null:'Draw';
+}
+
+function endGame(r){
+ clearInterval(interval);
+ let text=
+  r==='Draw'?'Draw 🤝':
+  mode==='ai'?(r==='X'?'You Win 🔥':'AI Wins 🤖'):
+  `Player ${r} Wins 🎉`;
+
+ winnerText.textContent=text;
+ winPopup.classList.remove('hidden');
+}
+
+cells.forEach(c=>c.onclick=clickCell);
+</script>
+
+</body>
+</html>
