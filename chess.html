@@ -3,60 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Grandmaster Chess</title>
+    <title>Grandmaster Chess Pro: Mastery</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@700&family=Inter:wght@400;700;900&display=swap');
+
         :root {
-            --sq-light: #f0d9b5;
-            --sq-dark: #b58863;
-            --sq-selected: rgba(255, 255, 0, 0.5);
-            --sq-last: rgba(155, 199, 0, 0.4);
+            --sq-light: #f8fafc;
+            --sq-dark: #cbd5e1;
+            --sq-selected: rgba(59, 130, 246, 0.4);
+            --sq-last: rgba(96, 165, 250, 0.25);
+            --neon-blue: #3b82f6;
+            --board-size: 0px; /* Calculated via JS */
         }
 
         body {
-            background-color: #121212;
+            background: #020617;
             color: #ffffff;
-            font-family: system-ui, -apple-system, sans-serif;
+            font-family: 'Inter', sans-serif;
             margin: 0;
             padding: 0;
-            height: 100%;
-            width: 100%;
-            overflow: hidden;
-            position: fixed; /* Prevents bounce scrolling */
-        }
-
-        .main-container {
-            display: flex;
-            flex-direction: column;
             height: 100vh;
             width: 100vw;
-            align-items: center;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+            touch-action: none;
         }
 
-        /* Fixed Square Aspect Ratio */
+        .font-racing { font-family: 'Syncopate', sans-serif; text-transform: uppercase; }
+
+        /* --- Home Screen Enhancements --- */
+        .home-gradient {
+            background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.15), transparent),
+                        radial-gradient(circle at bottom left, rgba(30, 58, 138, 0.2), transparent);
+        }
+
+        .glass-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        /* --- Hopping Animation --- */
+        @keyframes hop {
+            0% { transform: scale(1) translateY(0); }
+            40% { transform: scale(1.2) translateY(-25px); }
+            70% { transform: scale(1.1) translateY(-5px); }
+            100% { transform: scale(1) translateY(0); }
+        }
+
+        .piece {
+            font-size: calc(var(--board-size) / 9);
+            cursor: pointer;
+            z-index: 20;
+            line-height: 1;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));
+            pointer-events: none;
+            display: inline-block;
+            transition: color 0.3s ease;
+        }
+
+        .animate-hop {
+            animation: hop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .piece-white { color: #ffffff; text-shadow: 0 0 2px rgba(0,0,0,0.3); }
+        .piece-black { color: #0f172a; }
+
+        /* --- Board Design --- */
         #game-area {
             flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 100%;
-            padding: 10px;
+            padding: 20px;
         }
 
         #board-wrapper {
             position: relative;
-            background-color: #333;
-            border: 2px solid #444;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-            /* Dimensions set by JS to be a perfect square */
-        }
-
-        .board-grid {
-            display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            grid-template-rows: repeat(8, 1fr);
-            width: 100%;
-            height: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 0 80px rgba(0,0,0,0.9);
+            background-color: #334155;
+            border: 6px solid #1e293b;
+            display: none; /* Shown after start */
         }
 
         .square {
@@ -66,199 +99,166 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
         }
 
         .square.light { background-color: var(--sq-light); }
         .square.dark { background-color: var(--sq-dark); }
-        .square.selected { background-color: var(--sq-selected); }
+        .square.selected { background-color: var(--sq-selected) !important; }
         .square.last-move { background-color: var(--sq-last); }
 
-        .piece {
-            font-size: calc(var(--board-size) / 10);
-            cursor: pointer;
-            z-index: 2;
-            line-height: 1;
-            transition: transform 0.1s ease;
-        }
-
         .move-dot {
-            position: absolute;
-            width: 20%;
-            height: 20%;
-            background: rgba(0,0,0,0.15);
+            width: 25%; height: 25%;
+            background: rgba(0,0,0,0.1);
             border-radius: 50%;
-            z-index: 1;
         }
 
         .capture-ring {
-            position: absolute;
-            width: 80%;
-            height: 80%;
+            width: 80%; height: 80%;
             border: 4px solid rgba(0,0,0,0.1);
             border-radius: 50%;
-            z-index: 1;
         }
 
-        /* UI Overlays */
-        #menu-overlay {
-            position: fixed;
-            inset: 0;
-            background: #000;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
+        .btn-premium {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.4);
+            transition: all 0.2s ease;
         }
 
-        .mode-btn {
-            background: #222;
-            width: 100%;
-            max-width: 300px;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 12px;
-            border: 1px solid #333;
-            text-align: left;
-        }
-
-        .diff-selector {
-            display: flex;
-            gap: 8px;
-            margin-top: 10px;
-        }
-
-        .diff-pill {
-            flex: 1;
-            padding: 8px;
-            background: #333;
-            border-radius: 6px;
-            text-align: center;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        .diff-pill.active {
-            background: #3b82f6;
-        }
-
-        #game-over {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #1e1e1e;
-            padding: 40px;
-            border-radius: 24px;
-            text-align: center;
-            z-index: 2000;
-            border: 1px solid #333;
-            display: none;
-            width: 80%;
-            max-width: 320px;
-        }
+        .btn-premium:active { transform: scale(0.95); opacity: 0.9; }
     </style>
 </head>
-<body>
+<body class="home-gradient">
 
-    <div id="menu-overlay">
-        <h1 class="text-3xl font-bold mb-8 tracking-tight">CHESS<span class="text-blue-500">PRO</span></h1>
+    <!-- Premium Home Screen -->
+    <div id="menu-overlay" class="fixed inset-0 z-[5000] bg-[#020617] flex flex-col items-center justify-center p-6 sm:p-12">
+        <div class="absolute inset-0 opacity-20 pointer-events-none">
+            <div class="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-blue-600 rounded-full blur-[140px]"></div>
+            <div class="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-indigo-900 rounded-full blur-[140px]"></div>
+        </div>
+
+        <div class="relative text-center mb-12">
+            <h1 class="font-racing text-6xl md:text-7xl mb-1 tracking-tighter italic">CHESS<span class="text-blue-500">PRO</span></h1>
+            <p class="text-blue-400 text-[10px] tracking-[0.6em] font-black uppercase">Grandmaster Edition</p>
+        </div>
         
-        <button class="mode-btn" onclick="startGame('pvp')">
-            <div class="font-bold">Local Multiplayer</div>
-            <div class="text-xs text-gray-500">Two players, one device</div>
-        </button>
+        <div class="relative w-full max-w-sm space-y-4">
+            <button onclick="startGame('pvp')" class="glass-card w-full p-6 rounded-[2rem] flex items-center gap-6 group hover:border-blue-500/50 transition-all text-left">
+                <div class="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">⚔️</div>
+                <div>
+                    <div class="font-black text-lg text-white">Local PvP</div>
+                    <div class="text-[10px] text-slate-400 uppercase tracking-widest">Two Players</div>
+                </div>
+            </button>
 
-        <div class="mode-btn">
-            <div class="font-bold">Play Against AI</div>
-            <div class="diff-selector">
-                <div class="diff-pill active" id="d-easy" onclick="setD('easy')">Easy</div>
-                <div class="diff-pill" id="d-normal" onclick="setD('normal')">Mid</div>
-                <div class="diff-pill" id="d-hard" onclick="setD('hard')">Pro</div>
+            <div class="glass-card w-full p-8 rounded-[2.5rem]">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">🤖</div>
+                    <div class="font-black text-xl">AI Engine</div>
+                </div>
+                
+                <div class="grid grid-cols-3 gap-2 mb-8">
+                    <button id="d-easy" onclick="setD('easy')" class="py-3 text-[9px] font-black uppercase rounded-xl border border-white/5 bg-white/5 transition-all">Novice</button>
+                    <button id="d-normal" onclick="setD('normal')" class="py-3 text-[9px] font-black uppercase rounded-xl border border-white/5 bg-white/5 transition-all">Expert</button>
+                    <button id="d-hard" onclick="setD('hard')" class="py-3 text-[9px] font-black uppercase rounded-xl border border-white/5 bg-white/5 transition-all">G.Master</button>
+                </div>
+                
+                <button onclick="startGame('ai')" class="btn-premium w-full py-5 rounded-2xl font-black text-sm uppercase tracking-widest text-white">Engage AI</button>
             </div>
-            <button onclick="startGame('ai')" class="w-full bg-blue-600 mt-4 py-3 rounded-lg font-bold">Start Game</button>
         </div>
     </div>
 
-    <div class="main-container">
-        <div class="w-full px-4 h-16 flex justify-between items-center border-b border-gray-800 bg-black">
-            <button onclick="location.reload()" class="text-gray-400 text-sm">Menu</button>
-            <div id="status-text" class="font-bold text-sm tracking-widest uppercase">White's Turn</div>
-            <button onclick="initGame()" class="text-gray-400 text-sm">Reset</button>
-        </div>
+    <!-- Game Interface -->
+    <div id="game-ui" class="flex flex-col h-full relative z-10 opacity-0 transition-opacity duration-700">
+        <header class="h-20 flex items-center justify-between px-6 bg-slate-900/40 border-b border-white/5">
+            <button onclick="location.reload()" class="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-white">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            
+            <div id="status-panel" class="flex flex-col items-center">
+                <span id="status-text" class="text-[10px] font-black tracking-[0.4em] uppercase text-blue-500 mb-1">White's Turn</span>
+                <div class="h-1 w-16 bg-white/10 rounded-full overflow-hidden">
+                    <div id="turn-bar" class="h-full bg-blue-500 w-full transition-all duration-500"></div>
+                </div>
+            </div>
 
-        <div id="game-area">
+            <button onclick="initGame()" class="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-white">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+            </button>
+        </header>
+
+        <main id="game-area">
             <div id="board-wrapper">
-                <div id="board-grid" class="board-grid"></div>
+                <div id="board-grid" class="grid grid-cols-8 grid-rows-8 w-full h-full"></div>
             </div>
-        </div>
+        </main>
 
-        <div class="h-16 flex items-center justify-center text-[10px] text-gray-600 tracking-widest">
-            ENGINE V2.1 • NO REFLOW MODE
-        </div>
+        <footer class="h-16 flex items-center justify-center">
+            <div class="px-4 py-1 rounded-full bg-white/5 border border-white/5 text-[8px] text-slate-500 font-bold tracking-[0.3em] uppercase">
+                Tactical Neural Link Active
+            </div>
+        </footer>
     </div>
 
-    <div id="game-over">
-        <h2 id="win-reason" class="text-2xl font-bold mb-2">Checkmate</h2>
-        <p id="win-msg" class="text-gray-400 mb-6">White wins!</p>
-        <button onclick="initGame()" class="w-full bg-blue-600 py-3 rounded-xl font-bold">Play Again</button>
+    <!-- Victory Screen -->
+    <div id="game-over" class="fixed inset-0 z-[6000] hidden items-center justify-center p-6 bg-slate-950/90 backdrop-blur-xl">
+        <div class="glass-card p-12 rounded-[3rem] w-full max-w-sm text-center border-blue-500/30">
+            <div class="text-6xl mb-6">👑</div>
+            <h2 id="win-reason" class="font-racing text-3xl mb-2 text-white">VICTORY</h2>
+            <p id="win-msg" class="text-slate-400 text-sm mb-12">Combat Data Synchronized.</p>
+            <button onclick="initGame()" class="btn-premium w-full py-5 rounded-2xl font-black uppercase tracking-widest text-xs">New Session</button>
+        </div>
     </div>
 
     <script>
-        const PIECE_ICONS = {
+        const PIECES = {
             w: { p: '♙', r: '♖', n: '♘', b: '♗', q: '♕', k: '♔' },
             b: { p: '♟', r: '♜', n: '♞', b: '♝', q: '♛', k: '♚' }
         };
 
-        const VALS = { p: 10, n: 30, b: 30, r: 50, q: 90, k: 900 };
-
-        let board = [];
-        let turn = 'w';
-        let selected = null;
-        let moves = [];
-        let gameMode = 'pvp';
-        let difficulty = 'easy';
-        let lastMove = null;
-
-        // Resize handler to keep board square and stable
-        function resizeBoard() {
-            const area = document.getElementById('game-area');
-            const wrapper = document.getElementById('board-wrapper');
-            const size = Math.min(area.clientWidth - 20, area.clientHeight - 20);
-            
-            document.documentElement.style.setProperty('--board-size', size + 'px');
-            wrapper.style.width = size + 'px';
-            wrapper.style.height = size + 'px';
-        }
-
-        window.addEventListener('resize', resizeBoard);
-        window.addEventListener('load', resizeBoard);
+        let board = [], turn = 'w', selected = null, legalMoves = [], gameMode = 'pvp', difficulty = 'normal', lastMove = null;
 
         function setD(d) {
             difficulty = d;
-            ['easy','normal','hard'].forEach(x => 
-                document.getElementById('d-'+x).classList.toggle('active', x === d)
-            );
+            ['easy','normal','hard'].forEach(x => {
+                const el = document.getElementById('d-'+x);
+                el.className = `py-3 text-[9px] font-black uppercase rounded-xl border transition-all ${x===d ? 'border-blue-500 bg-blue-500/20 text-blue-400' : 'border-white/5 bg-white/5 text-slate-500'}`;
+            });
         }
+        setD('normal');
 
         function startGame(mode) {
             gameMode = mode;
+            // First hide menu and show UI container
             document.getElementById('menu-overlay').style.display = 'none';
-            resizeBoard();
-            initGame();
+            document.getElementById('game-ui').style.opacity = '1';
+            document.getElementById('board-wrapper').style.display = 'block';
+            
+            // Critical: Wait for layout before measuring
+            requestAnimationFrame(() => {
+                resizeBoard();
+                initGame();
+            });
         }
+
+        function resizeBoard() {
+            const area = document.getElementById('game-area');
+            const wrapper = document.getElementById('board-wrapper');
+            const size = Math.min(area.clientWidth - 40, area.clientHeight - 40);
+            
+            if (size > 0) {
+                document.documentElement.style.setProperty('--board-size', size + 'px');
+                wrapper.style.width = size + 'px';
+                wrapper.style.height = size + 'px';
+            }
+        }
+
+        window.addEventListener('resize', resizeBoard);
 
         function initGame() {
             board = Array(8).fill(null).map(() => Array(8).fill(null));
-            turn = 'w';
-            selected = null;
-            moves = [];
-            lastMove = null;
-            document.getElementById('game-over').style.display = 'none';
-
+            turn = 'w'; selected = null; legalMoves = []; lastMove = null;
+            document.getElementById('game-over').classList.add('hidden');
+            
             const layout = ['r','n','b','q','k','b','n','r'];
             for(let i=0; i<8; i++) {
                 board[0][i] = { type: layout[i], color: 'b' };
@@ -272,8 +272,8 @@
 
         function render() {
             const grid = document.getElementById('board-grid');
-            grid.innerHTML = '';
-
+            grid.innerHTML = ''; 
+            
             for(let r=0; r<8; r++) {
                 for(let c=0; c<8; c++) {
                     const sq = document.createElement('div');
@@ -287,207 +287,170 @@
                     const piece = board[r][c];
                     if(piece) {
                         const pDiv = document.createElement('div');
-                        pDiv.className = `piece ${piece.color === 'w' ? 'text-white' : 'text-black'}`;
-                        pDiv.innerHTML = PIECE_ICONS[piece.color][piece.type];
+                        pDiv.className = `piece ${piece.color === 'w' ? 'piece-white' : 'piece-black'}`;
+                        pDiv.innerHTML = PIECES[piece.color][piece.type];
+                        
+                        // Apply Hopping Animation to the piece that JUST moved
+                        if (lastMove && lastMove.tr === r && lastMove.tc === c) {
+                            pDiv.classList.add('animate-hop');
+                        }
+                        
                         sq.appendChild(pDiv);
                     }
 
-                    const move = moves.find(m => m.r === r && m.c === c);
-                    if(move) {
+                    if(legalMoves.find(m => m.r === r && m.c === c)) {
                         const hint = document.createElement('div');
                         hint.className = piece ? 'capture-ring' : 'move-dot';
                         sq.appendChild(hint);
                     }
 
-                    sq.onclick = () => handleTap(r, c);
+                    const handleEvent = (e) => {
+                        e.preventDefault();
+                        handleInteraction(r, c);
+                    };
+                    sq.onmousedown = handleEvent;
+                    sq.ontouchstart = handleEvent;
+                    
                     grid.appendChild(sq);
                 }
             }
         }
 
-        function handleTap(r, c) {
+        function handleInteraction(r, c) {
             if(gameMode === 'ai' && turn === 'b') return;
-
-            const move = moves.find(m => m.r === r && m.c === c);
+            
+            const move = legalMoves.find(m => m.r === r && m.c === c);
             if(move) {
-                commitMove(selected.r, selected.c, r, c);
+                executeMove(selected.r, selected.c, r, c);
             } else {
                 const piece = board[r][c];
                 if(piece && piece.color === turn) {
                     selected = {r, c};
-                    moves = getLegalMoves(r, c, board);
+                    legalMoves = getSafeMoves(r, c, board);
                 } else {
-                    selected = null;
-                    moves = [];
+                    selected = null; 
+                    legalMoves = [];
                 }
                 render();
             }
         }
 
-        function commitMove(fr, fc, tr, tc) {
+        function executeMove(fr, fc, tr, tc) {
             const p = board[fr][fc];
+            if(p.type === 'p' && (tr === 0 || tr === 7)) p.type = 'q';
+            
             board[tr][tc] = p;
             board[fr][fc] = null;
             lastMove = {fr, fc, tr, tc};
-
-            if(p.type === 'p' && (tr === 0 || tr === 7)) p.type = 'q';
-
+            
             turn = turn === 'w' ? 'b' : 'w';
-            selected = null;
-            moves = [];
+            selected = null; 
+            legalMoves = [];
+            
             render();
             updateUI();
-
-            if(!isGameOver()) {
-                if(gameMode === 'ai' && turn === 'b') {
-                    setTimeout(aiThink, 250);
-                }
+            
+            if(!checkGameOver() && gameMode === 'ai' && turn === 'b') {
+                setTimeout(aiStep, 600);
             }
         }
 
-        function getLegalMoves(r, c, b) {
+        // --- Basic Chess Engine Functions ---
+        function getSafeMoves(r, c, b) {
             const p = b[r][c];
-            if(!p) return [];
-            let possible = [];
-            const enemy = p.color === 'w' ? 'b' : 'w';
-
-            if(p.type === 'p') {
-                const dy = p.color === 'w' ? -1 : 1;
-                if(!b[r+dy]?.[c]) {
-                    possible.push({r: r+dy, c});
-                    if(((p.color==='w'&&r===6)||(p.color==='b'&&r===1)) && !b[r+2*dy]?.[c]) possible.push({r:r+2*dy, c});
-                }
-                [c-1, c+1].forEach(nc => {
-                    if(b[r+dy]?.[nc] && b[r+dy][nc].color === enemy) possible.push({r: r+dy, c: nc});
-                });
-            } else if(p.type === 'n') {
-                [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]].forEach(([dr,dc]) => {
-                    const nr=r+dr, nc=c+dc;
-                    if(nr>=0&&nr<8&&nc>=0&&nc<8 && b[nr][nc]?.color !== p.color) possible.push({r:nr, c:nc});
-                });
-            } else if(['b','r','q'].includes(p.type)) {
-                const dirs = p.type==='b'?[[1,1],[1,-1],[-1,1],[-1,-1]]:p.type==='r'?[[0,1],[0,-1],[1,0],[-1,0]]:[[1,1],[1,-1],[-1,1],[-1,-1],[0,1],[0,-1],[1,0],[-1,0]];
-                dirs.forEach(([dr,dc]) => {
-                    let nr=r+dr, nc=c+dc;
-                    while(nr>=0&&nr<8&&nc>=0&&nc<8) {
-                        if(!b[nr][nc]) possible.push({r:nr, c:nc});
-                        else {
-                            if(b[nr][nc].color === enemy) possible.push({r:nr, c:nc});
-                            break;
-                        }
-                        nr+=dr; nc+=dc;
-                    }
-                });
-            } else if(p.type === 'k') {
-                for(let dr=-1; dr<=1; dr++) {
-                    for(let dc=-1; dc<=1; dc++) {
-                        if(dr===0 && dc===0) continue;
-                        const nr=r+dr, nc=c+dc;
-                        if(nr>=0&&nr<8&&nc>=0&&nc<8 && b[nr][nc]?.color !== p.color) possible.push({r:nr, c:nc});
-                    }
-                }
-            }
-
-            // Safety filter (cannot move into check)
-            return possible.filter(m => {
-                const tmp = b.map(row => [...row]);
-                tmp[m.r][m.c] = tmp[r][c];
-                tmp[r][c] = null;
-                return !inCheck(p.color, tmp);
+            return getRawMoves(r, c, b).filter(m => {
+                const nextB = b.map(row => row.map(cell => cell ? {...cell} : null));
+                nextB[m.r][m.c] = nextB[r][c]; 
+                nextB[r][c] = null;
+                return !isKingAttacked(p.color, nextB);
             });
         }
 
-        function inCheck(color, b) {
-            let k;
-            for(let r=0; r<8; r++) for(let c=0; c<8; c++) if(b[r][c]?.type==='k' && b[r][c]?.color===color) k={r,c};
-            if(!k) return false;
-            const enemy = color === 'w' ? 'b' : 'w';
-            for(let r=0; r<8; r++) {
-                for(let c=0; c<8; c++) {
-                    if(b[r][c]?.color === enemy) {
-                        const moves = getSimpleMoves(r, c, b);
-                        if(moves.some(m => m.r === k.r && m.c === k.c)) return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        function getSimpleMoves(r, c, b) {
-            const p = b[r][c];
-            let m = [];
-            const enemy = p.color === 'w' ? 'b' : 'w';
+        function getRawMoves(r, c, b) {
+            const p = b[r][c]; if(!p) return [];
+            let moves = [], enemy = p.color === 'w' ? 'b' : 'w';
             if(p.type === 'p') {
-                const dy = p.color === 'w' ? -1 : 1;
-                [c-1, c+1].forEach(nc => { if(b[r+dy]?.[nc] && b[r+dy][nc].color === enemy) m.push({r: r+dy, c: nc}); });
+                const d = p.color === 'w' ? -1 : 1;
+                if(r+d>=0 && r+d<8 && !b[r+d][c]) {
+                    moves.push({r:r+d, c});
+                    if(r===(p.color==='w'?6:1) && !b[r+2*d][c] && !b[r+d][c]) moves.push({r:r+2*d, c});
+                }
+                [c-1, c+1].forEach(nc => { if(nc>=0 && nc<8 && b[r+d]?.[nc]?.color === enemy) moves.push({r:r+d, c:nc}); });
             } else if(p.type === 'n') {
-                [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]].forEach(([dr,dc]) => {
-                    const nr=r+dr, nc=c+dc; if(nr>=0&&nr<8&&nc>=0&&nc<8 && b[nr][nc]?.color !== p.color) m.push({r:nr, c:nc});
+                [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]].forEach(([dr, dc]) => {
+                    const nr=r+dr, nc=c+dc; if(nr>=0 && nr<8 && nc>=0 && nc<8 && b[nr][nc]?.color !== p.color) moves.push({r:nr, c:nc});
                 });
             } else if(['b','r','q'].includes(p.type)) {
-                const dirs = p.type==='b'?[[1,1],[1,-1],[-1,1],[-1,-1]]:p.type==='r'?[[0,1],[0,-1],[1,0],[-1,0]]:[[1,1],[1,-1],[-1,1],[-1,-1],[0,1],[0,-1],[1,0],[-1,0]];
-                dirs.forEach(([dr,dc]) => {
+                let ds = [];
+                if(p.type!=='r') ds.push([1,1],[1,-1],[-1,1],[-1,-1]);
+                if(p.type!=='b') ds.push([0,1],[0,-1],[1,0],[-1,0]);
+                ds.forEach(([dr, dc]) => {
                     let nr=r+dr, nc=c+dc;
-                    while(nr>=0&&nr<8&&nc>=0&&nc<8) {
-                        if(!b[nr][nc]) m.push({r:nr, c:nc}); else { if(b[nr][nc].color === enemy) m.push({r:nr, c:nc}); break; }
+                    while(nr>=0 && nr<8 && nc>=0 && nc<8) {
+                        if(!b[nr][nc]) moves.push({r:nr, c:nc});
+                        else { if(b[nr][nc].color===enemy) moves.push({r:nr, c:nc}); break; }
                         nr+=dr; nc+=dc;
                     }
                 });
             } else if(p.type === 'k') {
                 for(let dr=-1; dr<=1; dr++) for(let dc=-1; dc<=1; dc++) {
                     if(dr===0 && dc===0) continue;
-                    const nr=r+dr, nc=c+dc; if(nr>=0&&nr<8&&nc>=0&&nc<8 && b[nr][nc]?.color !== p.color) m.push({r:nr, c:nc});
+                    const nr=r+dr, nc=c+dc; if(nr>=0 && nr<8 && nc>=0 && nc<8 && b[nr][nc]?.color !== p.color) moves.push({r:nr, c:nc});
                 }
             }
-            return m;
+            return moves;
         }
 
-        function aiThink() {
-            const all = [];
-            for(let r=0; r<8; r++) {
-                for(let c=0; c<8; c++) {
-                    if(board[r][c]?.color === 'b') {
-                        getLegalMoves(r, c, board).forEach(m => all.push({fr:r, fc:c, tr:m.r, tc:m.c, score:0}));
-                    }
-                }
-            }
-            if(all.length === 0) return;
-
-            if(difficulty !== 'easy') {
-                all.forEach(m => {
-                    const target = board[m.tr][m.tc];
-                    if(target) m.score += VALS[target.type] * 10;
-                    if(m.tr >= 3 && m.tr <= 4 && m.tc >= 3 && m.tc <= 4) m.score += 5;
-                });
-                all.sort((a,b) => b.score - a.score);
-            }
-
-            const chosen = (difficulty === 'hard') ? all[0] : all[Math.floor(Math.random() * Math.min(all.length, 3))];
-            commitMove(chosen.fr, chosen.fc, chosen.tr, chosen.tc);
-        }
-
-        function isGameOver() {
-            let canMove = false;
-            for(let r=0; r<8; r++) {
-                for(let c=0; c<8; c++) {
-                    if(board[r][c]?.color === turn && getLegalMoves(r, c, board).length > 0) canMove = true;
-                }
-            }
-            if(!canMove) {
-                const check = inCheck(turn, board);
-                document.getElementById('game-over').style.display = 'block';
-                document.getElementById('win-reason').innerText = check ? "Checkmate" : "Stalemate";
-                document.getElementById('win-msg').innerText = check ? `${turn==='w'?'Black':'White'} wins!` : "It's a draw.";
-                return true;
+        function isKingAttacked(color, b) {
+            let k = null;
+            for(let r=0; r<8; r++) for(let c=0; c<8; c++) if(b[r][c]?.type==='k' && b[r][c]?.color===color) k={r,c};
+            if(!k) return false;
+            const enemy = color === 'w' ? 'b' : 'w';
+            for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
+                if(b[r][c]?.color === enemy && getRawMoves(r, c, b).some(m => m.r === k.r && m.c === k.c)) return true;
             }
             return false;
         }
 
+        function aiStep() {
+            let moves = [];
+            for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
+                if(board[r][c]?.color==='b') {
+                    getSafeMoves(r, c, board).forEach(m => moves.push({fr:r, fc:c, tr:m.r, tc:m.c, s:0}));
+                }
+            }
+            if(!moves.length) return;
+            moves.forEach(m => {
+                const target = board[m.tr][m.tc];
+                if(target) m.s += 100;
+                m.s += Math.random() * 5;
+            });
+            moves.sort((a,b) => b.s - a.s);
+            const p = difficulty === 'hard' ? moves[0] : moves[Math.floor(Math.random()*Math.min(moves.length, 3))];
+            executeMove(p.fr, p.fc, p.tr, p.tc);
+        }
+
+        function checkGameOver() {
+            let canMove = false;
+            for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
+                if(board[r][c]?.color===turn && getSafeMoves(r, c, board).length > 0) canMove=true;
+            }
+            if(canMove) return false;
+            
+            document.getElementById('game-over').classList.replace('hidden', 'flex');
+            const check = isKingAttacked(turn, board);
+            document.getElementById('win-reason').innerText = check ? "CHECKMATE" : "STALEMATE";
+            return true;
+        }
+
         function updateUI() {
-            const status = document.getElementById('status-text');
-            status.innerText = turn === 'w' ? "White's Turn" : "Black's Turn";
-            status.style.color = turn === 'w' ? "#fff" : "#3b82f6";
+            const txt = document.getElementById('status-text');
+            const bar = document.getElementById('turn-bar');
+            txt.innerText = turn === 'w' ? "White's Turn" : "Black's Turn";
+            txt.className = `text-[10px] font-black tracking-[0.4em] uppercase mb-1 transition-colors ${turn==='w'?'text-blue-500':'text-slate-400'}`;
+            bar.className = `h-full transition-all duration-500 ${turn==='w'?'bg-blue-500 w-full':'bg-slate-600 w-1/2'}`;
         }
     </script>
 </body>
 </html>
+

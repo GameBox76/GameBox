@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Star Pulse</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-blue: #00f2ff;
+            --neon-pink: #ff00ea;
+            --neon-purple: #bc13fe;
+            --bg-dark: #02020a;
+        }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background-color: var(--bg-dark);
+            font-family: 'Orbitron', sans-serif;
+            color: white; user-select: none; touch-action: none;
+        }
+
+        #game-container {
+            position: relative; width: 100vw; height: 100vh;
+            background: #000; overflow: hidden;
+        }
+
+        canvas { display: block; width: 100%; height: 100%; }
+
+        #damage-vignette {
+            position: absolute; inset: 0;
+            box-shadow: inset 0 0 100px rgba(255, 0, 0, 0);
+            pointer-events: none; z-index: 45;
+            transition: box-shadow 0.3s;
+        }
+        .critical-hp #damage-vignette {
+            box-shadow: inset 0 0 80px rgba(255, 0, 0, 0.6);
+            animation: redPulse 1.5s infinite;
+        }
+        @keyframes redPulse {
+            0% { opacity: 0.3; } 50% { opacity: 0.8; } 100% { opacity: 0.3; }
+        }
+
+        .overlay {
+            position: absolute; inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 100; backdrop-filter: blur(10px);
+        }
+
+        .hidden { display: none !important; }
+
+        .menu-card {
+            text-align: center; padding: 40px; border-radius: 24px;
+            background: rgba(10, 10, 25, 0.9);
+            border: 1px solid var(--neon-blue);
+            box-shadow: 0 0 50px rgba(0, 242, 255, 0.2);
+            width: 85%; max-width: 400px;
+        }
+
+        h1 {
+            font-size: 3rem; margin: 0; letter-spacing: 6px;
+            background: linear-gradient(to bottom, #fff, var(--neon-blue), var(--neon-pink));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            text-transform: uppercase; font-weight: 900;
+        }
+
+        .btn {
+            display: block; width: 100%; padding: 18px; margin-top: 20px;
+            background: rgba(255,255,255,0.05); color: white; border: 1px solid var(--neon-blue);
+            text-transform: uppercase; letter-spacing: 4px; font-weight: bold;
+            border-radius: 12px; cursor: pointer; transition: 0.2s;
+        }
+        .btn:active { background: var(--neon-blue); color: #000; transform: scale(0.95); }
+        .btn.sec { border-color: var(--neon-pink); font-size: 0.8rem; opacity: 0.8; }
+
+        .instruction-list {
+            text-align: left; margin: 20px 0; font-size: 14px; line-height: 1.6;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        .instruction-list b { color: var(--neon-blue); }
+
+        #hud {
+            position: absolute; top: 20px; left: 20px; right: 20px;
+            display: flex; justify-content: space-between; pointer-events: none;
+            z-index: 50;
+        }
+
+        .hud-group { display: flex; flex-direction: column; gap: 4px; }
+        .label { font-size: 9px; color: var(--neon-blue); letter-spacing: 2px; }
+        .val { font-size: 22px; font-weight: 900; text-shadow: 0 0 10px var(--neon-blue); }
+
+        #pause-btn {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            width: 48px; height: 48px; border-radius: 14px; border: 1px solid var(--neon-blue);
+            background: rgba(0,0,0,0.6); color: white; cursor: pointer; 
+            pointer-events: auto; z-index: 60; font-family: 'Orbitron';
+        }
+
+        .bar { width: 110px; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); position: relative; }
+        #hp-fill { height: 100%; width: 100%; background: linear-gradient(90deg, var(--neon-pink), #ff77e9); transition: width 0.3s; }
+        #ov-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--neon-purple), #d482ff); }
+        #ov-timer { position: absolute; right: 0; top: -14px; font-size: 10px; color: var(--neon-purple); font-weight: bold; }
+
+        #warning {
+            position: absolute; top: 110px; left: 50%; transform: translateX(-50%);
+            color: #ff3131; font-weight: 900; letter-spacing: 4px; font-size: 10px;
+            display: none; animation: pulse 0.4s infinite alternate; z-index: 40;
+        }
+    </style>
+</head>
+<body id="body">
+
+    <div id="game-container">
+        <div id="damage-vignette"></div>
+        <div id="hud" class="hidden">
+            <div class="hud-group">
+                <span class="label">SCORE</span>
+                <span id="score-val" class="val">0</span>
+                <span class="label" style="margin-top:12px">OVERDRIVE</span>
+                <div class="bar">
+                    <div id="ov-fill"></div>
+                    <span id="ov-timer" class="hidden">0.0s</span>
+                </div>
+            </div>
+            <div class="hud-group" style="align-items: flex-end;">
+                <span class="label">HEALTH</span>
+                <div class="bar"><div id="hp-fill"></div></div>
+                <span id="pct-val" style="font-size:12px; margin-top:4px; font-weight:700;">100%</span>
+            </div>
+        </div>
+
+        <button id="pause-btn" class="hidden" onclick="togglePause()">II</button>
+        <div id="warning">WARNING WARNING</div>
+
+        <div id="home-screen" class="overlay">
+            <div class="menu-card">
+                <h1>Space<br>Fighter</h1>
+                <p id="hs-val" style="font-size: 13px; color: var(--neon-blue); margin: 25px 0; letter-spacing: 2px;">BEST_RECORD: 00000</p>
+                <button class="btn" onclick="startGame()">PLAY</button>
+                <button class="btn sec" onclick="toggleGuide(true)">GUIDE</button>
+            </div>
+        </div>
+
+        <div id="guide-screen" class="overlay hidden">
+            <div class="menu-card">
+                <h1 style="font-size: 1.5rem;">GUIDE MENU</h1>
+                <div class="instruction-list">
+                    • <b>Movement:</b> Drag anywhere. Ship follows hand 1:1.<br><br>
+                    • <b>Combat:</b> Automatic fire. Left weapon fails at low HP.<br><br>
+                    • <b>Overdrive:</b> Destroy enemies to trigger purple fire mode.
+                </div>
+                <button class="btn sec" onclick="toggleGuide(false)">Close Menu</button>
+            </div>
+        </div>
+
+        <div id="pause-screen" class="overlay hidden">
+            <div class="menu-card">
+                <h1 style="font-size: 2rem;">Paused</h1>
+                <button class="btn" onclick="togglePause()">Resume</button>
+                <button class="btn sec" onclick="goHome()">Home</button>
+            </div>
+        </div>
+
+        <div id="gameover-screen" class="overlay hidden">
+            <div class="menu-card">
+                <h1 style="color: var(--neon-pink)">Mission Failed</h1>
+                <p id="final-score" style="margin: 25px 0; font-size: 18px;"></p>
+                <button class="btn" onclick="startGame()">Retry</button>
+                <button class="btn sec" onclick="goHome()">Home</button>
+            </div>
+        </div>
+
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                const now = audioCtx.currentTime;
+                if (type === 'fire') {
+                    osc.type = 'square'; osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+                    gain.gain.setValueAtTime(0.08, now); gain.gain.linearRampToValueAtTime(0, now + 0.1);
+                    osc.start(); osc.stop(now + 0.1);
+                } else if (type === 'death') {
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now);
+                    gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                    osc.start(); osc.stop(now + 0.5);
+                } else if (type === 'click') {
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(800, now);
+                    gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.05);
+                    osc.start(); osc.stop(now + 0.05);
+                } else if (type === 'overdrive') {
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(200, now);
+                    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.6);
+                    gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.6);
+                    osc.start(); osc.stop(now + 0.6);
+                }
+            } catch(e) {}
+        }
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const state = {
+            playing: false, paused: false, score: 0, lives: 4, 
+            hs: parseInt(localStorage.getItem('star_pulse_hs')) || 0,
+            od: 0, odActive: 0, difficulty: 1, frameCount: 0,
+            isResuming: false, shake: 0
+        };
+
+        let player, entities = [], projectiles = [], particles = [], stars = [];
+        let touchPos = { x: 0, y: 0, active: false, id: null };
+        let lastSpawn = 0;
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
+            ctx.scale(dpr, dpr);
+            canvas.style.width = window.innerWidth + 'px';
+            canvas.style.height = window.innerHeight + 'px';
+            initStars();
+        }
+
+        function initStars() {
+            stars = [];
+            for(let i=0; i<80; i++) stars.push({
+                x: Math.random() * window.innerWidth, 
+                y: Math.random() * window.innerHeight, 
+                s: Math.random() * 2 + 0.5,
+                v: Math.random() * 3 + 1
+            });
+        }
+
+        class Ship {
+            constructor(x, y, type) {
+                this.x = x; this.y = y; this.type = type;
+                this.hp = type === 'elite' ? 3 : 1;
+                this.color = type === 'player' ? 'cyan' : (type === 'elite' ? '#ff3131' : '#00f2ff');
+                this.lastShot = 0;
+            }
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                const isOverdrive = (this.type === 'player' && state.odActive > 0);
+                const drawColor = isOverdrive ? '#bc13fe' : this.color;
+                ctx.strokeStyle = drawColor;
+                ctx.shadowBlur = 15; ctx.shadowColor = drawColor;
+                ctx.lineWidth = 2.5;
+
+                if (this.type === 'player') {
+                    const isDamaged = state.lives <= 1;
+                    if (!isDamaged || Math.sin(state.frameCount*0.5) > -0.5) {
+                        ctx.beginPath(); ctx.moveTo(-10, -5); ctx.lineTo(-25, 15); ctx.lineTo(-12, 12); ctx.stroke();
+                    }
+                    ctx.beginPath(); ctx.moveTo(10, -5); ctx.lineTo(25, 15); ctx.lineTo(12, 12); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(0, -25); ctx.lineTo(10, 5); ctx.lineTo(0, 15); ctx.lineTo(-10, 5);
+                    ctx.closePath(); ctx.stroke();
+                } else {
+                    if (this.type === 'elite') {
+                        ctx.beginPath(); ctx.moveTo(0, 25); ctx.lineTo(15, 0); ctx.lineTo(0, -20); ctx.lineTo(-15, 0); ctx.closePath(); ctx.stroke();
+                        ctx.beginPath(); ctx.moveTo(-15, 5); ctx.lineTo(-25, -10); ctx.lineTo(-18, -10); ctx.stroke();
+                        ctx.beginPath(); ctx.moveTo(15, 5); ctx.lineTo(25, -10); ctx.lineTo(18, -10); ctx.stroke();
+                    } else {
+                        ctx.beginPath(); ctx.moveTo(-12, -15); ctx.lineTo(-18, 5); ctx.lineTo(-8, 0); ctx.stroke();
+                        ctx.beginPath(); ctx.moveTo(12, -15); ctx.lineTo(18, 5); ctx.lineTo(8, 0); ctx.stroke();
+                        ctx.strokeRect(-8, 0, 16, 12);
+                    }
+                }
+                ctx.restore();
+            }
+            update() {
+                if (this.type === 'player') {
+                    if (state.odActive > 0) state.odActive--;
+                    this.x = Math.max(25, Math.min(window.innerWidth - 25, this.x));
+                    this.y = Math.max(25, Math.min(window.innerHeight - 25, this.y));
+                } else {
+                    this.y += (this.type === 'elite' ? 2.5 : 4.5) * state.difficulty;
+                }
+            }
+        }
+
+        function startGame() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            playSound('click');
+            state.playing = true; state.paused = false; state.score = 0; state.lives = 4;
+            state.od = 0; state.odActive = 0; state.difficulty = 1; state.shake = 0;
+            entities = []; projectiles = []; particles = [];
+            player = new Ship(window.innerWidth/2, window.innerHeight - 150, 'player');
+            document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
+            document.getElementById('hud').classList.remove('hidden');
+            document.getElementById('pause-btn').classList.remove('hidden');
+            updateHUD();
+            requestAnimationFrame(loop);
+        }
+
+        function togglePause() {
+            if (!state.playing) return;
+            playSound('click');
+            state.paused = !state.paused;
+            document.getElementById('pause-screen').classList.toggle('hidden', !state.paused);
+            if (!state.paused) {
+                state.isResuming = true;
+                setTimeout(() => { state.isResuming = false; }, 100); 
+                requestAnimationFrame(loop);
+            }
+        }
+
+        function goHome() {
+            playSound('click');
+            state.playing = false; state.paused = false;
+            document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
+            document.getElementById('home-screen').classList.remove('hidden');
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('pause-btn').classList.add('hidden');
+            document.getElementById('hs-val').innerText = `BEST_RECORD: ${state.hs.toString().padStart(5, '0')}`;
+            document.getElementById('body').classList.remove('critical-hp');
+        }
+
+        function updateHUD() {
+            document.getElementById('score-val').innerText = state.score;
+            document.getElementById('hp-fill').style.width = (state.lives * 25) + '%';
+            document.getElementById('pct-val').innerText = (state.lives * 25) + '%';
+            
+            if (state.odActive > 0) {
+                document.getElementById('ov-fill').style.width = (state.odActive / 4) + '%';
+                const t = document.getElementById('ov-timer');
+                t.classList.remove('hidden'); 
+                t.innerText = (state.odActive/60).toFixed(1)+'s';
+            } else {
+                document.getElementById('ov-fill').style.width = state.od + '%';
+                document.getElementById('ov-timer').classList.add('hidden');
+            }
+            
+            document.getElementById('warning').style.display = state.lives <= 1 ? 'block' : 'none';
+            document.getElementById('body').classList.toggle('critical-hp', state.lives <= 1);
+        }
+
+        function loop() {
+            if (!state.playing || state.paused) return;
+            state.frameCount++;
+            ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+            if (state.shake > 0) {
+                ctx.save();
+                ctx.translate((Math.random()-0.5)*state.shake, (Math.random()-0.5)*state.shake);
+                state.shake *= 0.9;
+                if (state.shake < 0.1) state.shake = 0;
+            }
+
+            stars.forEach(s => {
+                ctx.fillStyle = `rgba(255,255,255,${s.v/4})`;
+                ctx.fillRect(s.x, s.y, s.s, s.s);
+                s.y += s.v * (state.odActive > 0 ? 2 : 1);
+                if (s.y > window.innerHeight) s.y = -10;
+            });
+
+            player.update();
+            player.draw();
+
+            if (touchPos.active && !state.isResuming) {
+                const rate = state.odActive > 0 ? 80 : 150;
+                if (Date.now() - player.lastShot > rate) {
+                    if (state.lives > 1) projectiles.push({x: player.x-18, y: player.y-10, vy: -18, side: 'player'});
+                    projectiles.push({x: player.x+18, y: player.y-10, vy: -18, side: 'player'});
+                    player.lastShot = Date.now(); playSound('fire');
+                }
+            }
+
+            if (Date.now() - lastSpawn > 1200 / state.difficulty) {
+                const lane = Math.floor(Math.random()*5) * (window.innerWidth/5) + (window.innerWidth/10);
+                if(!entities.some(e => Math.abs(e.x - lane) < 50 && e.y < 50)) {
+                    entities.push(new Ship(lane, -50, Math.random()>0.85?'elite':'scout'));
+                    lastSpawn = Date.now();
+                }
+            }
+
+            projectiles = projectiles.filter(p => {
+                p.y += p.vy;
+                ctx.fillStyle = p.side === 'player' ? (state.odActive > 0 ? '#bc13fe' : 'cyan') : 'red';
+                ctx.fillRect(p.x-1.5, p.y, 3, 16);
+                if (p.side === 'enemy' && Math.hypot(p.x-player.x, p.y-player.y) < 22) {
+                    state.lives--; state.shake = 15; updateHUD();
+                    if(state.lives<=0){ playSound('death'); showGameOver(); }
+                    return false;
+                }
+                return p.y > -50 && p.y < window.innerHeight + 50;
+            });
+
+            entities = entities.filter(e => {
+                e.update(); e.draw();
+                if (Math.hypot(e.x-player.x, e.y-player.y) < 40) {
+                    state.lives--; state.shake = 20; updateHUD();
+                    if(state.lives<=0){ playSound('death'); showGameOver(); }
+                    return false;
+                }
+                let dead = false;
+                projectiles.forEach((p, pi) => {
+                    if (p.side === 'player' && Math.hypot(p.x-e.x, p.y-e.y) < 30) {
+                        e.hp -= (state.odActive > 0 ? 2 : 1); projectiles.splice(pi, 1);
+                        if(e.hp<=0) {
+                            dead = true; 
+                            state.score += 100; 
+                            state.difficulty += 0.005;
+                            if(state.odActive <= 0) {
+                                state.od += 6; 
+                                if(state.od>=100){ 
+                                    state.odActive=400; 
+                                    state.od=0; 
+                                    playSound('overdrive'); 
+                                }
+                            }
+                            playSound('death'); state.shake = 8;
+                            for(let i=0; i<12; i++) particles.push({x:e.x, y:e.y, vx:(Math.random()-0.5)*12, vy:(Math.random()-0.5)*12, l:1, c:e.color});
+                        }
+                    }
+                });
+                return !dead && e.y < window.innerHeight + 100;
+            });
+
+            particles = particles.filter(p => {
+                p.x += p.vx; p.y += p.vy; p.l -= 0.02;
+                ctx.globalAlpha = p.l; ctx.fillStyle = p.c;
+                ctx.fillRect(p.x, p.y, 2, 2); ctx.globalAlpha = 1;
+                return p.l > 0;
+            });
+
+            if (state.shake > 0) ctx.restore();
+            
+            // Always update HUD in loop to ensure Score and Overdrive reflect latest state
+            updateHUD(); 
+            
+            requestAnimationFrame(loop);
+        }
+
+        function showGameOver() {
+            state.playing = false;
+            if (state.score > state.hs) { state.hs = state.score; localStorage.setItem('star_pulse_hs', state.hs); }
+            document.getElementById('gameover-screen').classList.remove('hidden');
+            document.getElementById('final-score').innerText = `PULSE_SCORE: ${state.score}`;
+        }
+
+        function toggleGuide(s) { playSound('click'); document.getElementById('guide-screen').classList.toggle('hidden', !s); }
+
+        const handleStart = (e, x, y, id) => {
+            if (!state.playing || state.paused) return;
+            touchPos = { x, y, active: true, id };
+        };
+        const handleMove = (e, x, y, id) => {
+            if (!state.playing || state.paused || !touchPos.active || (touchPos.id !== id && id !== 'mouse')) return;
+            const dx = x - touchPos.x; const dy = y - touchPos.y;
+            player.x += dx; player.y += dy;
+            touchPos.x = x; touchPos.y = y;
+        };
+
+        window.addEventListener('resize', resize);
+        window.addEventListener('mousedown', (e) => handleStart(e, e.clientX, e.clientY, 'mouse'));
+        window.addEventListener('mousemove', (e) => handleMove(e, e.clientX, e.clientY, 'mouse'));
+        window.addEventListener('mouseup', () => touchPos.active = false);
+
+        window.addEventListener('touchstart', (e) => {
+            if(e.target.tagName === 'BUTTON' || state.paused) return;
+            const t = e.changedTouches[0];
+            handleStart(e, t.clientX, t.clientY, t.identifier);
+        }, {passive: false});
+        window.addEventListener('touchmove', (e) => {
+            if(state.paused) return;
+            const t = e.changedTouches[0];
+            handleMove(e, t.clientX, t.clientY, t.identifier);
+            e.preventDefault();
+        }, {passive: false});
+        window.addEventListener('touchend', (e) => {
+            if(touchPos.id === e.changedTouches[0].identifier) touchPos.active = false;
+        });
+
+        resize();
+        goHome();
+    </script>
+</body>
+</html>
+

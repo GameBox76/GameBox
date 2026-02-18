@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Sky Dash 2D Elite</title>
+    <title>Sky Dash Elite</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap');
+
         :root {
             --primary: #4ec0ca;
             --accent: #f7d302;
@@ -12,400 +14,871 @@
             --success: #2ed573;
             --shield: #00f3ff;
             --slowmo: #a55eea;
-            --glass: rgba(255, 255, 255, 0.2);
+            --glass: rgba(15, 23, 42, 0.75);
+            --gold: #ffd700;
         }
 
         body {
             margin: 0; padding: 0; overflow: hidden;
-            background-color: #2c3e50;
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: #020617;
+            font-family: 'Outfit', sans-serif;
             display: flex; justify-content: center; align-items: center; height: 100vh;
+            touch-action: none; user-select: none;
         }
 
         #game-container {
             position: relative;
             width: 100vw; height: 100vh;
-            max-width: 450px; max-height: 850px;
-            background: linear-gradient(to bottom, #4ec0ca 0%, #d2f4f7 100%);
+            max-width: 500px;
+            background: var(--primary);
             overflow: hidden;
-            box-shadow: 0 20px 80px rgba(0,0,0,0.5);
+            box-shadow: 0 0 100px rgba(0,0,0,0.8);
         }
 
         canvas { display: block; width: 100%; height: 100%; }
 
         /* HUD */
-        .hud { position: absolute; z-index: 10; pointer-events: none; color: white; font-weight: 900; text-shadow: 2px 2px 0 rgba(0,0,0,0.3); }
-        #score-box { top: 30px; left: 30px; font-size: 50px; }
-        #hi-box { top: 85px; left: 32px; font-size: 16px; color: var(--accent); letter-spacing: 1px; }
+        .hud { position: absolute; z-index: 10; pointer-events: none; color: white; font-weight: 900; visibility: hidden; }
+        #score-box { top: 60px; left: 0; width: 100%; text-align: center; font-size: 80px; text-shadow: 0 4px 10px rgba(0,0,0,0.3); opacity: 0.9; }
+        #hi-box { top: 20px; left: 20px; font-size: 14px; color: var(--accent); letter-spacing: 1px; }
+        #coin-hud { top: 40px; left: 20px; font-size: 18px; color: var(--gold); display: flex; align-items: center; gap: 5px; }
 
-        /* Timers */
+        .pause-btn, .guide-btn-top {
+            position: absolute; top: 20px; width: 44px; height: 44px;
+            background: var(--glass); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50%; display: flex; justify-content: center; align-items: center;
+            cursor: pointer; z-index: 60; color: white; backdrop-filter: blur(5px);
+            pointer-events: auto;
+        }
+        .pause-btn { right: 20px; visibility: hidden; }
+        .guide-btn-top { right: 74px; font-weight: 900; font-size: 20px; }
+
         #timer-container {
-            position: absolute; top: 30px; right: 80px;
-            display: flex; flex-direction: column; align-items: flex-end; gap: 8px; z-index: 10;
+            position: absolute; top: 80px; right: 20px;
+            display: flex; flex-direction: column; gap: 6px; z-index: 10;
         }
         .timer-row {
             display: flex; align-items: center; gap: 8px;
-            background: rgba(0,0,0,0.4); padding: 6px 14px; border-radius: 20px;
-            opacity: 0; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            backdrop-filter: blur(5px);
+            background: rgba(0,0,0,0.7); padding: 4px 10px; border-radius: 20px;
+            opacity: 0; transform: translateX(30px); transition: 0.4s;
         }
-        .timer-row.active { opacity: 1; transform: translateX(-5px); }
-        .timer-label { font-size: 16px; }
-        .bar-bg { width: 70px; height: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }
+        .timer-row.active { opacity: 1; transform: translateX(0); }
+        .bar-bg { width: 40px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
         .bar-fill { height: 100%; width: 100%; transition: width 0.1s linear; }
-
-        #pause-btn {
-            position: absolute; top: 25px; right: 20px;
-            width: 48px; height: 48px; background: white;
-            border-radius: 16px; display: flex; justify-content: center; align-items: center;
-            cursor: pointer; z-index: 100; pointer-events: all; border: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15); transition: 0.2s;
-        }
 
         /* Overlays */
         .overlay {
             position: absolute; inset: 0; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 200;
-            background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px);
-            visibility: hidden; opacity: 0; transition: 0.4s;
+            justify-content: center; align-items: center; z-index: 100;
+            background: rgba(2, 6, 23, 0.4); opacity: 0; visibility: hidden;
+            transition: 0.4s; backdrop-filter: blur(10px);
         }
-        .overlay.active { visibility: visible; opacity: 1; pointer-events: all; }
+        .overlay.active { opacity: 1; visibility: visible; }
         
-        .panel {
-            background: rgba(255, 255, 255, 0.95); padding: 40px 30px; border-radius: 40px; text-align: center;
-            width: 80%; border: 1px solid rgba(255,255,255,0.5); 
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        .panel { 
+            width: 85%; max-width: 380px; text-align: center; color: white; 
+            background: var(--glass); padding: 35px 20px; border-radius: 32px;
+            border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            transform: translateY(30px); transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            max-height: 85vh; overflow-y: auto;
         }
+        .overlay.active .panel { transform: translateY(0); }
 
-        h1 { font-size: 42px; margin: 0; background: linear-gradient(45deg, #2c3e50, #4ec0ca); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
+        .title-container { position: relative; margin-bottom: 25px; }
+        .title-badge { 
+            position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
+            background: var(--accent); color: black; font-size: 10px; font-weight: 900;
+            padding: 4px 12px; border-radius: 20px; text-transform: uppercase; letter-spacing: 2px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        h1 { font-size: 64px; margin: 0; font-weight: 900; line-height: 0.85; letter-spacing: -3px; }
+        h1 span { color: var(--accent); display: block; font-size: 48px; letter-spacing: 4px; }
         
-        .btn {
-            padding: 20px 40px; background: #2ed573; color: white;
-            border: none; border-radius: 20px;
-            font-size: 20px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 15px;
-            box-shadow: 0 10px 20px rgba(46, 213, 115, 0.3); transition: 0.2s;
-        }
-        .btn:active { transform: translateY(4px); }
-        .btn.secondary { background: #4ec0ca; box-shadow: 0 10px 20px rgba(78, 192, 202, 0.3); }
+        .btn-group { display: flex; flex-direction: column; gap: 12px; margin-top: 25px; }
 
-        #booster-alert {
-            position: absolute; bottom: 15%; left: 0; width: 100%;
-            text-align: center; color: white; font-weight: 900; font-size: 28px;
-            text-shadow: 0 4px 10px rgba(0,0,0,0.5); pointer-events: none; z-index: 150;
-            transform: translateY(30px); opacity: 0; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        .primary-btn {
+            background: white; color: black; border: none; padding: 20px;
+            font-size: 20px; font-weight: 900; border-radius: 20px; cursor: pointer;
+            transition: 0.2s; text-transform: uppercase; letter-spacing: 1px;
+            box-shadow: 0 10px 25px rgba(255,255,255,0.2);
+            position: relative; overflow: hidden;
         }
-        #booster-alert.show { transform: translateY(0); opacity: 1; }
+        .primary-btn::after {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+            transform: rotate(45deg); animation: shine 3s infinite;
+        }
+        @keyframes shine { 0% { left: -150%; } 100% { left: 150%; } }
+        
+        .primary-btn:active { transform: scale(0.96); background: var(--accent); }
 
-        #new-record-tag {
-            color: var(--danger); font-size: 14px; font-weight: 800; display: none;
-            text-transform: uppercase; margin-top: 10px; animation: pulse 1s infinite;
+        .nav-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 25px; }
+        .icon-btn {
+            background: rgba(255,255,255,0.08); border-radius: 20px; 
+            padding: 15px 10px; display: flex; flex-direction: column; align-items: center; 
+            gap: 5px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); 
+            transition: 0.2s;
         }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .icon-btn span { font-size: 10px; font-weight: 700; text-transform: uppercase; opacity: 0.6; }
+        .icon-btn:active { transform: translateY(4px); background: rgba(255,255,255,0.2); }
+
+        .home-stat-preview {
+            display: flex; justify-content: space-around; background: rgba(0,0,0,0.3);
+            border-radius: 16px; padding: 12px; margin-top: 20px; font-size: 14px;
+        }
+        .home-stat-preview div b { color: var(--accent); }
+
+        /* Store & Stats Styling */
+        .upgrade-card {
+            background: rgba(255,255,255,0.05); border-radius: 16px; padding: 15px;
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+            text-align: left; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .upgrade-info b { display: block; font-size: 16px; }
+        .upgrade-info span { font-size: 12px; opacity: 0.6; }
+        .buy-btn {
+            background: var(--gold); color: black; border: none; padding: 10px 15px;
+            border-radius: 12px; font-weight: 900; cursor: pointer;
+        }
+        .buy-btn.maxed { background: #444; color: #888; cursor: default; }
+
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .stat-item { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 16px; }
+        .stat-val { font-size: 24px; font-weight: 900; color: var(--accent); }
+        .stat-label { font-size: 10px; opacity: 0.6; text-transform: uppercase; }
+
+        .theme-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 25px 0; }
+        .theme-btn { 
+            background: rgba(255,255,255,0.05); border: 1.5px solid rgba(255,255,255,0.1); 
+            padding: 12px 5px; border-radius: 12px; color: white; font-size: 11px;
+            font-weight: 700; cursor: pointer; transition: 0.2s;
+        }
+        .theme-btn.selected { background: white; border-color: white; color: black; }
+
+        #alert-system {
+            position: absolute; bottom: 25%; width: 100%; text-align: center;
+            color: white; font-weight: 900; font-size: 32px; pointer-events: none;
+            z-index: 50; transform: scale(0.8); opacity: 0; transition: 0.3s;
+            text-shadow: 0 0 20px rgba(255,255,255,0.5);
+        }
+        #alert-system.show { transform: scale(1.2); opacity: 1; }
+        
+        .menu-bird {
+            width: 80px; height: 60px; margin-bottom: 30px;
+            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3));
+            animation: float 2.5s infinite ease-in-out;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(-5deg); }
+            50% { transform: translateY(-20px) rotate(8deg); }
+        }
+
+        /* Guide Layout */
+        .guide-item {
+            display: flex; align-items: center; gap: 15px; margin-bottom: 15px; text-align: left;
+            background: rgba(255,255,255,0.05); padding: 10px; border-radius: 12px;
+        }
+        .guide-icon { font-size: 24px; min-width: 40px; text-align: center; }
+
+        #death-flash {
+            position: absolute; inset: 0; background: white; 
+            z-index: 200; pointer-events: none; opacity: 0;
+        }
+        #death-flash.flash { animation: flash-anim 0.4s ease-out forwards; }
+        @keyframes flash-anim { 0% { opacity: 1; } 100% { opacity: 0; } }
     </style>
 </head>
 <body>
 
 <div id="game-container">
+    <div id="death-flash"></div>
+    <!-- Live HUD -->
     <div id="score-box" class="hud">0</div>
     <div id="hi-box" class="hud">BEST: 0</div>
-    
-    <div id="timer-container">
-        <div id="shield-timer" class="timer-row"><span class="timer-label">🛡️</span><div class="bar-bg"><div id="shield-bar" class="bar-fill" style="background: var(--shield)"></div></div></div>
-        <div id="boost-timer" class="timer-row"><span class="timer-label">⭐</span><div class="bar-bg"><div id="boost-bar" class="bar-fill" style="background: var(--danger)"></div></div></div>
-        <div id="slow-timer" class="timer-row"><span class="timer-label">⏳</span><div class="bar-bg"><div id="slow-bar" class="bar-fill" style="background: var(--slowmo)"></div></div></div>
+    <div id="coin-hud" class="hud">🟡 <span id="coin-count">0</span></div>
+
+    <div class="pause-btn" id="pause-trigger">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
     </div>
 
-    <button id="pause-btn"><svg width="24" height="24" viewBox="0 0 24 24" fill="#333"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg></button>
-    <div id="booster-alert">SHIELD ACTIVE!</div>
+    <div class="guide-btn-top" id="guide-trigger">?</div>
+    
+    <div id="timer-container">
+        <div id="shield-timer" class="timer-row">🛡️<div class="bar-bg"><div id="shield-bar" class="bar-fill" style="background: var(--shield)"></div></div></div>
+        <div id="boost-timer" class="timer-row">⭐<div class="bar-bg"><div id="boost-bar" class="bar-fill" style="background: var(--danger)"></div></div></div>
+        <div id="slow-timer" class="timer-row">⏳<div class="bar-bg"><div id="slow-bar" class="bar-fill" style="background: var(--slowmo)"></div></div></div>
+    </div>
+
+    <div id="alert-system">POWER UP!</div>
 
     <canvas id="gameCanvas"></canvas>
 
-    <!-- Start Overlay -->
-    <div id="start-overlay" class="overlay active">
+    <!-- Main Menu -->
+    <div id="menu-start" class="overlay active">
         <div class="panel">
-            <h1>SKY DASH</h1>
-            <p style="color: #64748b; font-size: 18px; margin: 15px 0 30px;">How long can you fly?</p>
-            <div style="background: #f1f5f9; padding: 20px; border-radius: 20px; margin-bottom: 25px;">
-                <p style="margin:0; font-size: 12px; color: #94a3b8; text-transform: uppercase;">Current Best</p>
-                <p id="start-hi" style="margin:0; font-size: 32px; font-weight: 900; color: #1e293b;">0</p>
+            <center><div class="menu-bird" id="menu-bird-svg"></div></center>
+            
+            <div class="title-container">
+                <div class="title-badge" id="auto-mode-badge">Elite Series</div>
+                <h1>SKY<span>DASH</span></h1>
             </div>
-            <button class="btn" onclick="initGame()">PLAY NOW</button>
+            
+            <div class="btn-group">
+                <button class="primary-btn" id="start-btn">Take Flight</button>
+            </div>
+
+            <div class="nav-row">
+                <div class="icon-btn" onclick="UI.show('menu-profile')">
+                    <div style="font-size:24px">👤</div>
+                    <span>Pilot</span>
+                </div>
+                <div class="icon-btn" onclick="UI.show('menu-store')">
+                    <div style="font-size:24px">🛒</div>
+                    <span>Shop</span>
+                </div>
+                <div class="icon-btn" onclick="UI.show('menu-settings')">
+                    <div style="font-size:24px">⚙️</div>
+                    <span>Gear</span>
+                </div>
+            </div>
+
+            <div class="home-stat-preview">
+                <div>BEST: <b id="preview-hi">0</b></div>
+                <div>WALLET: <b id="preview-coins">0</b></div>
+            </div>
         </div>
     </div>
 
-    <!-- Pause Overlay -->
-    <div id="pause-overlay" class="overlay">
+    <!-- Guide Menu -->
+    <div id="menu-guide" class="overlay">
         <div class="panel">
-            <h1>PAUSED</h1>
-            <button class="btn" onclick="togglePause()">RESUME</button>
-            <button class="btn secondary" onclick="initGame()">RESTART</button>
+            <h2 style="color:var(--accent); letter-spacing: 2px; text-transform: uppercase;">Flight Manual</h2>
+            <div class="guide-item"><div class="guide-icon">👆</div><div><b>Tap/Click:</b> Flap wings to stay airborne.</div></div>
+            <div class="guide-item"><div class="guide-icon">🛡️</div><div><b>Shield:</b> Protects you from one crash.</div></div>
+            <div class="guide-item"><div class="guide-icon">⭐</div><div><b>Nitro:</b> Doubles score and grants speed.</div></div>
+            <div class="guide-item"><div class="guide-icon">⏳</div><div><b>Warp:</b> Slows down time for better control.</div></div>
+            <div class="guide-item"><div class="guide-icon">🟡</div><div><b>Coins:</b> Earn 1 coin per 2 points scored.</div></div>
+            <button class="primary-btn" style="width:100%; margin-top:10px;" onclick="UI.show('menu-start')">Got It</button>
         </div>
     </div>
 
-    <!-- Game Over Overlay -->
-    <div id="game-over-overlay" class="overlay">
+    <!-- Store Menu -->
+    <div id="menu-store" class="overlay">
         <div class="panel">
-            <h1 style="color: var(--danger)">CRASHED</h1>
-            <div style="font-size: 64px; font-weight: 900; margin: 10px 0; color: #1e293b;" id="final-score">0</div>
-            <div id="new-record-tag">NEW RECORD!</div>
-            <button class="btn" onclick="initGame()">TRY AGAIN</button>
+            <h2 style="color:var(--accent); letter-spacing: 2px; text-transform: uppercase;">Upgrade Shop</h2>
+            <div style="color: var(--gold); font-weight: 900; margin-bottom: 15px;">Wallet: 🪙 <span class="wallet-val">0</span></div>
+            <div id="upgrade-list"></div>
+            <button class="primary-btn" style="width:100%; margin-top:15px; background: rgba(255,255,255,0.1); color:white;" onclick="UI.show('menu-start')">Back</button>
+        </div>
+    </div>
+
+    <!-- Profile Menu -->
+    <div id="menu-profile" class="overlay">
+        <div class="panel">
+            <h2 style="color:var(--accent); letter-spacing: 2px; text-transform: uppercase;">Pilot Stats</h2>
+            <div class="stats-grid">
+                <div class="stat-item"><div class="stat-val" id="stat-hi">0</div><div class="stat-label">High Score</div></div>
+                <div class="stat-item"><div class="stat-val" id="stat-total-coins">0</div><div class="stat-label">Total Coins</div></div>
+                <div class="stat-item"><div class="stat-val" id="stat-flights">0</div><div class="stat-label">Total Flights</div></div>
+                <div class="stat-item"><div class="stat-val" id="stat-upgrades">0</div><div class="stat-label">Upgrades</div></div>
+            </div>
+            <button class="primary-btn" style="width:100%" onclick="UI.show('menu-start')">Back</button>
+        </div>
+    </div>
+
+    <!-- Settings Menu -->
+    <div id="menu-settings" class="overlay">
+        <div class="panel">
+            <h2 style="color:var(--accent); letter-spacing: 2px; text-transform: uppercase;">Themes</h2>
+            <div class="theme-grid" id="theme-selector"></div>
+            <button class="primary-btn" style="width:100%" onclick="UI.show('menu-start')">Back</button>
+            <button style="background:none; border:none; color:rgba(255,255,255,0.3); font-size:10px; margin-top:20px; cursor:pointer;" id="reset-mem-btn">Reset Progress</button>
+        </div>
+    </div>
+
+    <!-- Pause Menu -->
+    <div id="menu-pause" class="overlay">
+        <div class="panel">
+            <h1 style="font-size: 40px;">PAUSED</h1>
+            <p style="opacity: 0.6; margin-bottom: 20px;">Ready to jump back in?</p>
+            <div class="btn-group">
+                <button class="primary-btn" id="resume-btn">Resume</button>
+                <button class="primary-btn" style="background: rgba(255,255,255,0.1); color: white;" onclick="Game.goHome()">Home</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Menu -->
+    <div id="menu-death" class="overlay">
+        <div class="panel">
+            <h1 style="color: var(--danger); font-size: 40px;">CRASHED</h1>
+            <div id="death-score-display" style="font-size: 64px; font-weight: 900; margin: 10px 0;">0</div>
+            <div style="color: var(--gold); font-weight: 900; margin-bottom: 15px;">Earned: 🪙 <span id="earned-coins">0</span></div>
+            <div id="new-hi-badge" style="background: var(--accent); color: black; display: inline-block; padding: 6px 16px; border-radius: 8px; font-weight: 900; font-size: 14px; margin-bottom: 25px; display: none;">NEW BEST!</div>
+            <div class="btn-group">
+                <button class="primary-btn" id="restart-btn">Try Again</button>
+                <button class="primary-btn" style="background: rgba(255,255,255,0.1); color: white;" onclick="Game.goHome()">Home</button>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    const container = document.getElementById('game-container');
+/** * SKY DASH ELITE - WINTER EDITION */
 
-    // Audio
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function playSound(freq, type, duration, vol = 0.1) {
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + duration);
-        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + duration);
-    }
+const AudioEngine = {
+    ctx: null,
+    init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
+    play(freq, type = 'sine', duration = 0.1, vol = 0.1) {
+        this.init(); if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = type; osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        osc.connect(g); g.connect(this.ctx.destination);
+        g.gain.setValueAtTime(vol, this.ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.00001, this.ctx.currentTime + duration);
+        osc.start(); osc.stop(this.ctx.currentTime + duration);
+    },
+    jump() { this.play(400, 'triangle', 0.2, 0.05); },
+    score() { this.play(800, 'sine', 0.3, 0.05); },
+    death() { this.play(80, 'sawtooth', 0.8, 0.3); },
+    powerup() { this.play(1200, 'sine', 0.6, 0.05); },
+    buy() { this.play(600, 'sine', 0.2, 0.1); }
+};
 
-    const sfx = {
-        jump: () => playSound(400, 'square', 0.1, 0.05),
-        score: () => playSound(800, 'sine', 0.2, 0.08),
-        item: () => { playSound(600, 'triangle', 0.1, 0.1); setTimeout(() => playSound(900, 'triangle', 0.2, 0.1), 50); },
-        crash: () => playSound(150, 'sawtooth', 0.4, 0.15)
-    };
+const THEMES = {
+    day: { name: 'Daylight', bg: ['#4ec0ca', '#ffffff'], g: 700, pipe: '#2ed573', speed: 180, gap: 250, particles: 'clouds', feature: 'sun', bird: '#f7d302' },
+    night: { name: 'Midnight', bg: ['#020617', '#0f172a'], g: 700, pipe: '#334155', speed: 180, gap: 250, particles: 'stars', feature: 'moon', bird: '#fbbf24' },
+    sunset: { name: 'Sunset', bg: ['#ff512f', '#dd2476'], g: 700, pipe: '#92400e', speed: 180, gap: 250, particles: 'embers', feature: 'sun', bird: '#f7d302' },
+    storm: { name: 'Storm', bg: ['#1e293b', '#334155'], g: 800, pipe: '#0f172a', speed: 220, gap: 230, particles: 'rain', feature: null, bird: '#94a3b8' },
+    space: { name: 'Nebula', bg: ['#000000', '#2d065d'], g: 500, pipe: '#ec4899', speed: 180, gap: 260, particles: 'nebula', feature: 'planet', bird: '#ffffff' },
+    winter: { name: 'Winter', bg: ['#cbd5e1', '#f8fafc'], g: 720, pipe: '#1e293b', speed: 190, gap: 245, particles: 'snow', feature: 'sun', bird: '#3b82f6' }
+};
 
-    const HI_SCORE_KEY = 'skyDashElite_v1_HiScore';
-    const gravity = 0.22;
-    const jumpPower = -5.5;
-    const DURATION = 450;
-    
-    let basePipeSpeed = 3.5;
-    let currentPipeSpeed = 3.5;
-    let state = 'START';
-    let score = 0;
-    let highScore = parseInt(localStorage.getItem(HI_SCORE_KEY)) || 0;
-    
-    let bird = null, pipes = [], items = [], frameCount = 0;
+const UPGRADES = {
+    shield: { name: 'Ion Shield', base: 7.0, step: 2.0, price: 50, max: 5 },
+    boost: { name: 'Nitro Star', base: 7.0, step: 2.5, price: 75, max: 5 },
+    slow: { name: 'Time Warp', base: 7.0, step: 2.0, price: 60, max: 5 }
+};
 
-    function resize() {
-        canvas.width = container.clientWidth;
-        canvas.height = container.clientHeight;
-    }
-    window.addEventListener('resize', resize);
-    resize();
-
-    // Initial HUD update
-    document.getElementById('start-hi').innerText = highScore;
-    document.getElementById('hi-box').innerText = "BEST: " + highScore;
-
-    function showAlert(text, color) {
-        const el = document.getElementById('booster-alert');
-        el.innerText = text; el.style.color = color; el.classList.add('show');
-        setTimeout(() => el.classList.remove('show'), 1500);
-    }
-
-    class Bird {
-        constructor() {
-            this.x = canvas.width * 0.25;
-            this.y = canvas.height / 2;
-            this.v = 0; this.r = 18;
-            this.shield = 0; this.boost = 0; this.slow = 0;
-            this.flap = 0;
-        }
-        update() {
-            this.v += gravity;
-            this.y += this.v;
-            this.flap = Math.sin(frameCount * 0.25) * 6;
-            if (this.shield > 0) this.shield--;
-            if (this.boost > 0) this.boost--;
-            if (this.slow > 0) this.slow--;
-
-            const floorY = canvas.height - 50;
-            if (this.shield > 0) {
-                if (this.y + this.r > floorY - 30) {
-                    this.y = floorY - 30 - this.r;
-                    this.v = -0.5;
-                }
-            } else {
-                if (this.y + this.r > floorY) endGame();
-            }
-            if (this.y - this.r < 0) { this.y = this.r; this.v = 0.5; }
-        }
-        draw() {
-            ctx.save();
-            ctx.translate(this.x, this.y);
-            ctx.rotate(Math.min(Math.PI/4, Math.max(-Math.PI/4, this.v * 0.1)));
-
-            if (this.shield > 0) {
-                ctx.beginPath(); ctx.arc(0, 0, this.r + 12, 0, Math.PI*2);
-                ctx.strokeStyle = 'rgba(0, 243, 255, 0.6)'; ctx.lineWidth = 4;
-                ctx.setLineDash([10, 5]); ctx.lineDashOffset = -frameCount * 2;
-                ctx.stroke();
-            }
-
-            ctx.fillStyle = '#f7d302'; ctx.beginPath(); ctx.arc(0, 0, this.r, 0, Math.PI*2); ctx.fill();
-            ctx.strokeStyle = '#000'; ctx.lineWidth = 2.5; ctx.stroke();
-            ctx.fillStyle = '#fff'; ctx.beginPath();
-            ctx.ellipse(-8, this.flap, 12, 8, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(8, -5, 3.5, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = '#ff6b6b'; ctx.beginPath();
-            ctx.moveTo(14, -2); ctx.lineTo(26, 4); ctx.lineTo(14, 10); ctx.closePath(); ctx.fill(); ctx.stroke();
-            ctx.restore();
-        }
-    }
-
-    class Pipe {
-        constructor() {
-            this.w = 80;
-            this.gap = 190 - Math.min(score * 0.5, 75);
-            this.x = canvas.width;
-            const minCenter = 180, maxCenter = canvas.height - 230;
-            this.centerY = Math.random() * (maxCenter - minCenter) + minCenter;
-            this.passed = false;
-            if (Math.random() > 0.88) items.push(new Item(this.x + this.w/2, this.centerY));
-        }
-        update() { this.x -= currentPipeSpeed; }
-        draw() {
-            const topHeight = this.centerY - this.gap/2;
-            const bottomY = this.centerY + this.gap/2;
-            ctx.fillStyle = '#2ed573'; ctx.strokeStyle = '#1d8a4a'; ctx.lineWidth = 3;
-            ctx.fillRect(this.x, 0, this.w, topHeight); ctx.strokeRect(this.x, 0, this.w, topHeight);
-            ctx.fillRect(this.x - 5, topHeight - 35, this.w + 10, 35); ctx.strokeRect(this.x - 5, topHeight - 35, this.w + 10, 35);
-            ctx.fillRect(this.x, bottomY, this.w, canvas.height - bottomY); ctx.strokeRect(this.x, bottomY, this.w, canvas.height - bottomY);
-            ctx.fillRect(this.x - 5, bottomY, this.w + 10, 35); ctx.strokeRect(this.x - 5, bottomY, this.w + 10, 35);
-        }
-    }
-
-    class Item {
-        constructor(x, y) {
-            this.x = x; this.y = y;
-            const r = Math.random();
-            if (r < 0.20) this.type = 'shield';
-            else if (r < 0.55) this.type = 'boost';
-            else this.type = 'slow';
-            this.r = 22;
-        }
-        update() { this.x -= currentPipeSpeed; }
-        draw() {
-            ctx.save(); ctx.font = "28px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            let emoji = this.type === 'shield' ? "🛡️" : (this.type === 'boost' ? "⭐" : "⏳");
-            ctx.translate(this.x, this.y + Math.sin(frameCount * 0.1) * 8);
-            ctx.fillText(emoji, 0, 0); ctx.restore();
-        }
-    }
-
-    function initGame() {
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        bird = new Bird(); pipes = []; items = []; frameCount = 0; score = 0;
-        basePipeSpeed = 3.5; currentPipeSpeed = 3.5; state = 'PLAYING';
-        document.getElementById('score-box').innerText = "0";
-        document.getElementById('new-record-tag').style.display = 'none';
+const UI = {
+    show(id) {
         document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        if (id === 'menu-store') Game.renderStore();
+        if (id === 'menu-profile') Game.renderProfile();
+        if (id === 'menu-start') Game.updateHomePreview();
     }
+};
 
-    function togglePause() {
-        if (state === 'GAMEOVER' || state === 'START') return;
-        state = (state === 'PLAYING') ? 'PAUSE' : 'PLAYING';
-        document.getElementById('pause-overlay').classList.toggle('active', state === 'PAUSE');
-    }
+const Game = {
+    state: 'MENU',
+    canvas: document.getElementById('gameCanvas'),
+    ctx: document.getElementById('gameCanvas').getContext('2d'),
+    theme: localStorage.getItem('skydash_theme') || 'auto',
+    score: 0,
+    hi: parseInt(localStorage.getItem('skydash_hi')) || 0,
+    coins: parseInt(localStorage.getItem('skydash_coins')) || 0,
+    sessionCoins: 0,
+    totalFlights: parseInt(localStorage.getItem('skydash_flights')) || 0,
+    upgrades: JSON.parse(localStorage.getItem('skydash_upgrades')) || { shield: 0, boost: 0, slow: 0 },
+    lastTime: performance.now(),
+    bird: null, pipes: [], items: [], scenery: [], mountains: [], particles: [],
+    shake: 0, width: 0, height: 0,
 
-    function endGame() {
-        if (state !== 'PLAYING' || (bird && bird.shield > 0)) return;
-        state = 'GAMEOVER';
-        sfx.crash();
-        
-        const isNewRecord = score > highScore;
-        if (isNewRecord) {
-            highScore = score;
-            localStorage.setItem(HI_SCORE_KEY, highScore.toString());
-            document.getElementById('new-record-tag').style.display = 'block';
-            document.getElementById('start-hi').innerText = highScore;
-            document.getElementById('hi-box').innerText = "BEST: " + highScore;
-        }
+    init() {
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        this.setupInput();
+        this.renderThemes();
+        this.applyThemeSelection();
+        this.injectBirdSVG();
+        this.updateHomePreview();
+        requestAnimationFrame((t) => this.loop(t));
+    },
 
-        document.getElementById('final-score').innerText = score;
-        document.getElementById('game-over-overlay').classList.add('active');
-    }
+    applyThemeSelection() {
+        if (this.theme === 'auto') {
+            const now = new Date();
+            const hour = now.getHours();
+            const month = now.getMonth(); // 0-11
+            let selected = 'day';
 
-    function loop() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        ctx.fillStyle = 'rgba(255,255,255,0.4)';
-        for(let i=0; i<4; i++) {
-            let speedMult = state === 'PAUSE' ? 0 : (bird && bird.slow > 0 ? 0.3 : 1);
-            let cx = (frameCount * (0.4 + i*0.2) * speedMult + i*200) % (canvas.width + 200) - 100;
-            ctx.beginPath(); ctx.arc(cx, 80 + i*70, 30 + i*5, 0, Math.PI*2); ctx.fill();
-        }
-
-        if (state === 'PLAYING' && bird) {
-            frameCount++;
-            bird.update();
-            currentPipeSpeed = bird.slow > 0 ? basePipeSpeed * 0.5 : basePipeSpeed;
-
-            const timers = { shield: bird.shield, boost: bird.boost, slow: bird.slow };
-            for (let t in timers) {
-                const row = document.getElementById(t + '-timer');
-                if (timers[t] > 0) {
-                    row.classList.add('active');
-                    document.getElementById(t + '-bar').style.width = (timers[t]/DURATION*100) + '%';
-                } else row.classList.remove('active');
+            // Winter check (Dec, Jan, Feb)
+            if (month === 11 || month === 0 || month === 1) {
+                selected = 'winter';
+            } else if (hour >= 18 || hour < 6) {
+                selected = 'night';
+            } else if (hour >= 16) {
+                selected = 'sunset';
             }
-
-            if (frameCount % (bird.slow > 0 ? 160 : 100) === 0) pipes.push(new Pipe());
-
-            pipes.forEach((p, i) => {
-                p.update();
-                if (bird.shield <= 0 && bird.x + 10 > p.x && bird.x - 10 < p.x + p.w) {
-                    if (bird.y - 12 < p.centerY - p.gap/2 || bird.y + 12 > p.centerY + p.gap/2) endGame();
-                }
-                if (!p.passed && p.x + p.w < bird.x) {
-                    p.passed = true; score += (bird.boost > 0 ? 2 : 1);
-                    document.getElementById('score-box').innerText = score;
-                    sfx.score();
-                    if (score % 8 === 0) basePipeSpeed += 0.15;
-                }
-            });
-            pipes = pipes.filter(p => p.x > -100);
-
-            items.forEach((it, i) => {
-                it.update();
-                if (Math.hypot(bird.x - it.x, bird.y - it.y) < bird.r + it.r) {
-                    sfx.item();
-                    if (it.type === 'shield') { bird.shield = DURATION; showAlert("🛡️ SHIELD ACTIVE", "#00f3ff"); }
-                    else if (it.type === 'boost') { bird.boost = DURATION; showAlert("⭐ DOUBLE POINTS", "#ff4757"); }
-                    else { bird.slow = DURATION; showAlert("⏳ TIME SLOWED", "#a55eea"); }
-                    items.splice(i, 1);
-                }
-            });
-            items = items.filter(it => it.x > -100);
+            
+            this.updateTheme(selected);
+            document.getElementById('auto-mode-badge').innerText = `AUTO: ${THEMES[selected].name}`;
+        } else {
+            this.updateTheme(this.theme);
         }
+    },
 
-        ctx.fillStyle = '#dec18b'; ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
-        ctx.fillStyle = '#73bf2e'; ctx.fillRect(0, canvas.height - 55, canvas.width, 10);
+    injectBirdSVG() {
+        const svg = `<svg viewBox="0 0 50 40" width="80"><circle cx="20" cy="20" r="15" fill="${THEMES[this.theme === 'auto' ? 'day' : this.theme].bird}" stroke="black" stroke-width="2"/><path d="M30 18 L45 23 L30 28 Z" fill="#ff6b6b" stroke="black"/><circle cx="25" cy="15" r="3" fill="white" stroke="black"/><circle cx="26" cy="15" r="1" fill="black"/><path d="M5 20 Q10 10 20 20" fill="white" stroke="black" stroke-width="2" fill-opacity="0.5"/></svg>`;
+        document.getElementById('menu-bird-svg').innerHTML = svg;
+    },
 
-        pipes.forEach(p => p.draw());
-        items.forEach(it => it.draw());
-        if (bird) bird.draw();
+    updateHomePreview() {
+        document.getElementById('preview-hi').innerText = this.hi;
+        document.getElementById('preview-coins').innerText = this.coins;
+    },
 
-        requestAnimationFrame(loop);
+    renderThemes() {
+        const grid = document.getElementById('theme-selector');
+        grid.innerHTML = '';
+        
+        // Add Auto Option
+        const autoBtn = document.createElement('button');
+        autoBtn.className = `theme-btn ${this.theme === 'auto' ? 'selected' : ''}`;
+        autoBtn.innerText = "Automatic";
+        autoBtn.onclick = () => { this.theme = 'auto'; localStorage.setItem('skydash_theme', 'auto'); this.applyThemeSelection(); this.renderThemes(); };
+        grid.appendChild(autoBtn);
+
+        Object.keys(THEMES).forEach(key => {
+            const btn = document.createElement('button');
+            btn.className = `theme-btn ${key === this.theme ? 'selected' : ''}`;
+            btn.innerText = THEMES[key].name;
+            btn.onclick = () => { 
+                this.theme = key;
+                localStorage.setItem('skydash_theme', key);
+                this.updateTheme(key, btn); 
+                AudioEngine.play(200); 
+                this.renderThemes();
+            };
+            grid.appendChild(btn);
+        });
+    },
+
+    updateTheme(key, btn) {
+        const activeThemeKey = key === 'auto' ? 'day' : key;
+        this.scenery = []; this.mountains = [];
+        document.getElementById('game-container').style.background = `linear-gradient(to bottom, ${THEMES[activeThemeKey].bg[0]}, ${THEMES[activeThemeKey].bg[1]})`;
+        const type = THEMES[activeThemeKey].particles;
+        for(let i=0; i<20; i++) this.scenery.push(new SceneryItem(type, Math.random()*this.width, Math.random()*this.height));
+        if (activeThemeKey !== 'space') for(let i=0; i<5; i++) this.mountains.push(new Mountain(i * (this.width/3), this.height, activeThemeKey));
+    },
+
+    renderStore() {
+        document.querySelectorAll('.wallet-val').forEach(el => el.innerText = this.coins);
+        const list = document.getElementById('upgrade-list');
+        list.innerHTML = '';
+        Object.keys(UPGRADES).forEach(key => {
+            const up = UPGRADES[key];
+            const level = this.upgrades[key];
+            const cost = up.price * (level + 1);
+            const isMax = level >= up.max;
+            
+            const card = document.createElement('div');
+            card.className = 'upgrade-card';
+            card.innerHTML = `
+                <div class="upgrade-info">
+                    <b>${up.name} (Lv.${level})</b>
+                    <span>Current: ${(up.base + level * up.step).toFixed(1)}s</span>
+                </div>
+                <button class="buy-btn ${isMax ? 'maxed' : ''}" onclick="Game.buyUpgrade('${key}')">
+                    ${isMax ? 'MAX' : '🪙 ' + cost}
+                </button>
+            `;
+            list.appendChild(card);
+        });
+    },
+
+    buyUpgrade(key) {
+        const up = UPGRADES[key];
+        const cost = up.price * (this.upgrades[key] + 1);
+        if (this.upgrades[key] < up.max && this.coins >= cost) {
+            this.coins -= cost;
+            this.upgrades[key]++;
+            this.save();
+            this.renderStore();
+            AudioEngine.buy();
+        }
+    },
+
+    renderProfile() {
+        document.getElementById('stat-hi').innerText = this.hi;
+        document.getElementById('stat-total-coins').innerText = this.coins;
+        document.getElementById('stat-flights').innerText = this.totalFlights;
+        document.getElementById('stat-upgrades').innerText = Object.values(this.upgrades).reduce((a, b) => a + b, 0);
+    },
+
+    save() {
+        localStorage.setItem('skydash_hi', this.hi);
+        localStorage.setItem('skydash_coins', this.coins);
+        localStorage.setItem('skydash_flights', this.totalFlights);
+        localStorage.setItem('skydash_upgrades', JSON.stringify(this.upgrades));
+    },
+
+    resize() {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = this.canvas.getBoundingClientRect();
+        this.canvas.width = rect.width * dpr;
+        this.canvas.height = rect.height * dpr;
+        this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        this.width = rect.width; this.height = rect.height;
+    },
+
+    setupInput() {
+        const handleInteraction = (e) => {
+            if (AudioEngine.ctx === null) AudioEngine.init();
+            if (e.target.closest('.overlay') || e.target.closest('.pause-btn') || e.target.closest('.icon-btn') || e.target.closest('.guide-btn-top')) return;
+            if (this.state === 'PLAYING' && this.bird) { this.bird.jump(); AudioEngine.jump(); }
+        };
+        window.addEventListener('mousedown', handleInteraction);
+        window.addEventListener('touchstart', (e) => { if (!e.target.closest('.overlay')) e.preventDefault(); handleInteraction(e); }, { passive: false });
+
+        document.getElementById('start-btn').onclick = () => this.start();
+        document.getElementById('restart-btn').onclick = () => this.start();
+        document.getElementById('resume-btn').onclick = () => this.resume();
+        document.getElementById('pause-trigger').onclick = () => this.pause();
+        document.getElementById('guide-trigger').onclick = () => UI.show('menu-guide');
+        document.getElementById('reset-mem-btn').onclick = () => { if(confirm("Wipe all progress?")) { localStorage.clear(); location.reload(); } };
+    },
+
+    goHome() {
+        this.state = 'MENU'; this.bird = null; this.pipes = []; this.items = []; this.particles = [];
+        UI.show('menu-start');
+        document.querySelectorAll('.hud').forEach(h => h.style.visibility = 'hidden');
+        document.getElementById('pause-trigger').style.visibility = 'hidden';
+        document.getElementById('guide-trigger').style.visibility = 'visible';
+    },
+
+    start() {
+        this.resize();
+        this.applyThemeSelection();
+        this.bird = new Bird(this.width * 0.25, this.height * 0.4);
+        this.pipes = []; this.items = []; this.particles = []; this.score = 0; this.sessionCoins = 0; this.state = 'PLAYING';
+        this.totalFlights++; this.save();
+        
+        document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active'));
+        document.querySelectorAll('.hud').forEach(h => h.style.visibility = 'visible');
+        document.getElementById('pause-trigger').style.visibility = 'visible';
+        document.getElementById('guide-trigger').style.visibility = 'hidden';
+        
+        this.updateLiveHUD();
+    },
+
+    updateLiveHUD() {
+        document.getElementById('score-box').innerText = this.score;
+        document.getElementById('hi-box').innerText = "BEST: " + Math.max(this.hi, this.score);
+        document.getElementById('coin-count').innerText = this.coins + Math.floor(this.score / 2);
+    },
+
+    pause() { if (this.state === 'PLAYING') { this.state = 'PAUSE'; UI.show('menu-pause'); } },
+    resume() { this.state = 'PLAYING'; document.getElementById('menu-pause').classList.remove('active'); },
+
+    gameOver() {
+        if (this.state === 'DEAD') return;
+        this.state = 'DEAD'; this.shake = 25; AudioEngine.death();
+        
+        // Death Effects
+        document.getElementById('death-flash').classList.add('flash');
+        setTimeout(() => document.getElementById('death-flash').classList.remove('flash'), 400);
+
+        // Spawn Death Particles
+        for(let i=0; i<15; i++) {
+            this.particles.push(new DeathParticle(this.bird.x, this.bird.y, THEMES[this.getCurrentThemeKey()].bird));
+        }
+        
+        const earned = Math.floor(this.score / 2);
+        this.coins += earned;
+        
+        setTimeout(() => {
+            document.getElementById('death-score-display').innerText = this.score;
+            document.getElementById('earned-coins').innerText = earned;
+            if (this.score > this.hi) {
+                this.hi = this.score;
+                document.getElementById('hi-box').innerText = "BEST: " + this.hi;
+                document.getElementById('new-hi-badge').style.display = 'inline-block';
+            } else {
+                document.getElementById('new-hi-badge').style.display = 'none';
+            }
+            this.save();
+            UI.show('menu-death');
+        }, 1200);
+    },
+
+    getCurrentThemeKey() {
+        if (this.theme !== 'auto') return this.theme;
+        const now = new Date(); const hour = now.getHours(); const month = now.getMonth();
+        if (month === 11 || month === 0 || month === 1) return 'winter';
+        if (hour >= 18 || hour < 6) return 'night';
+        if (hour >= 16) return 'sunset';
+        return 'day';
+    },
+
+    showAlert(msg) {
+        const el = document.getElementById('alert-system');
+        el.innerText = msg; el.classList.add('show');
+        setTimeout(() => el.classList.remove('show'), 1000);
+    },
+
+    loop(timestamp) {
+        const dt = (timestamp - this.lastTime) / 1000;
+        this.lastTime = timestamp;
+        if (this.state !== 'PAUSE') { this.update(Math.min(dt, 0.1)); this.draw(); }
+        requestAnimationFrame((t) => this.loop(t));
+    },
+
+    update(dt) {
+        if (this.shake > 0) this.shake *= 0.9;
+        const themeKey = this.getCurrentThemeKey();
+        const speed = THEMES[themeKey].speed;
+        
+        this.scenery.forEach(s => s.update(dt, speed));
+        this.mountains.forEach(m => m.update(dt, speed));
+        this.particles.forEach((p, i) => { p.update(dt); if(p.life <= 0) this.particles.splice(i, 1); });
+
+        if (this.bird && this.state !== 'DEAD') {
+            this.bird.update(dt);
+            if (this.state === 'PLAYING') {
+                if (this.pipes.length === 0 || (this.width - this.pipes[this.pipes.length-1].x) > 350) {
+                    this.pipes.push(new Pipe(this.width, this.height));
+                }
+                this.pipes.forEach(p => {
+                    p.update(dt);
+                    if (p.collides(this.bird)) {
+                        if (this.bird.shield > 0) {
+                            this.bird.shield = 0; this.bird.invuln = 1.0;
+                            this.showAlert("SHIELD BROKEN!");
+                        } else if (this.bird.invuln <= 0) this.gameOver();
+                    }
+                    if (!p.passed && p.x + p.w < this.bird.x) {
+                        p.passed = true;
+                        this.score += (this.bird.boost > 0 ? 2 : 1);
+                        this.updateLiveHUD();
+                        AudioEngine.score();
+                    }
+                });
+                this.items.forEach((it, i) => {
+                    it.update(dt);
+                    if (it.collides(this.bird)) {
+                        this.bird.applyPowerup(it.type);
+                        this.showAlert(it.type.toUpperCase() + "!");
+                        AudioEngine.powerup(); this.items.splice(i, 1);
+                    }
+                });
+                this.pipes = this.pipes.filter(p => p.x > -150);
+                this.items = this.items.filter(it => it.x > -150);
+            }
+        }
+    },
+
+    draw() {
+        const { ctx, width, height } = this;
+        if (!width || !height) return;
+        const themeKey = this.getCurrentThemeKey();
+        ctx.clearRect(0, 0, width, height);
+        ctx.save();
+        if (this.shake > 1) ctx.translate(Math.random()*this.shake - this.shake/2, Math.random()*this.shake - this.shake/2);
+        this.drawFeature(ctx);
+        this.scenery.forEach(s => s.draw(ctx));
+        this.mountains.forEach(m => m.draw(ctx));
+        this.pipes.forEach(p => p.draw(ctx));
+        this.items.forEach(it => it.draw(ctx));
+        this.particles.forEach(p => p.draw(ctx));
+        
+        if(this.bird && this.state !== 'DEAD') this.bird.draw(ctx);
+        
+        ctx.fillStyle = THEMES[themeKey].pipe;
+        ctx.fillRect(0, height-40, width, 40);
+        ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(0, height-40, width, 4);
+        ctx.restore();
+    },
+
+    drawFeature(ctx) {
+        const themeKey = this.getCurrentThemeKey();
+        const feat = THEMES[themeKey].feature; if (!feat) return;
+        ctx.save();
+        if (feat === 'sun') {
+            ctx.fillStyle = '#f7d302'; ctx.shadowBlur = 40; ctx.shadowColor = '#f7d302';
+            ctx.beginPath(); ctx.arc(this.width * 0.8, 100, 40, 0, Math.PI*2); ctx.fill();
+        } else if (feat === 'moon') {
+            ctx.fillStyle = '#f1f5f9'; ctx.shadowBlur = 20; ctx.shadowColor = '#fff';
+            ctx.beginPath(); ctx.arc(this.width * 0.8, 100, 35, 0, Math.PI*2); ctx.fill();
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.beginPath(); ctx.arc(this.width * 0.77, 90, 35, 0, Math.PI*2); ctx.fill();
+        } else if (feat === 'planet') {
+            ctx.fillStyle = '#6366f1'; ctx.beginPath(); ctx.arc(this.width * 0.7, 150, 60, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.ellipse(this.width * 0.7, 150, 100, 20, Math.PI/6, 0, Math.PI*2); ctx.stroke();
+        }
+        ctx.restore();
     }
+};
 
-    const jump = () => { if (state === 'PLAYING' && bird) { bird.v = jumpPower; sfx.jump(); } };
-    
-    window.addEventListener('mousedown', (e) => { if (!e.target.closest('#pause-btn') && e.target.tagName !== 'BUTTON') jump(); });
-    window.addEventListener('touchstart', (e) => { if (!e.target.closest('#pause-btn') && e.target.tagName !== 'BUTTON') { jump(); e.preventDefault(); } }, {passive: false});
-    window.addEventListener('keydown', (e) => { if (e.code === 'Space') jump(); if (e.code === 'Escape') togglePause(); });
-    document.getElementById('pause-btn').onclick = (e) => { e.stopPropagation(); togglePause(); };
+class DeathParticle {
+    constructor(x, y, color) {
+        this.x = x; this.y = y;
+        this.vx = (Math.random() - 0.5) * 400;
+        this.vy = (Math.random() - 0.5) * 400;
+        this.life = 1.0; this.size = Math.random() * 10 + 5;
+        this.color = color;
+    }
+    update(dt) {
+        this.x += this.vx * dt; this.y += this.vy * dt;
+        this.vy += 800 * dt; this.life -= dt;
+    }
+    draw(ctx) {
+        ctx.save(); ctx.globalAlpha = this.life; ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, this.size, this.size); ctx.restore();
+    }
+}
 
-    loop();
+class Mountain {
+    constructor(x, canvasHeight, themeKey) {
+        this.x = x; this.y = canvasHeight - 40;
+        this.w = 300 + Math.random() * 200; this.h = 100 + Math.random() * 150;
+        this.color = themeKey === 'night' || themeKey === 'winter' ? '#1e293b' : 'rgba(0,0,0,0.1)';
+        this.speedMult = 0.2;
+    }
+    update(dt, baseSpeed) { this.x -= baseSpeed * this.speedMult * dt; if (this.x < -this.w) this.x = Game.width; }
+    draw(ctx) {
+        ctx.save(); ctx.fillStyle = this.color; ctx.beginPath();
+        ctx.moveTo(this.x, this.y); ctx.lineTo(this.x + this.w/2, this.y - this.h);
+        ctx.lineTo(this.x + this.w, this.y); ctx.fill(); ctx.restore();
+    }
+}
+
+class SceneryItem {
+    constructor(type, x, y) {
+        this.type = type; this.x = x; this.y = y;
+        this.size = Math.random() * 5 + 2; this.speedMult = Math.random() * 0.5 + 0.1;
+        if(type === 'clouds') this.size = Math.random() * 60 + 40;
+    }
+    update(dt, baseSpeed) {
+        this.x -= baseSpeed * this.speedMult * dt;
+        if(this.x < -100) { this.x = Game.width + 100; this.y = Math.random() * Game.height; }
+    }
+    draw(ctx) {
+        ctx.save(); ctx.fillStyle = "rgba(255,255,255,0.2)";
+        if(this.type === 'clouds') { ctx.beginPath(); ctx.ellipse(this.x, this.y, this.size, this.size/2, 0, 0, Math.PI*2); ctx.fill(); }
+        else if(this.type === 'snow') { ctx.beginPath(); ctx.arc(this.x, this.y, this.size/2, 0, Math.PI*2); ctx.fill(); }
+        else if(this.type === 'rain') { ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(this.x - 10, this.y + 20); ctx.stroke(); }
+        else if(this.type === 'nebula') { ctx.fillStyle = `hsla(${Math.random()*360}, 70%, 70%, 0.1)`; ctx.beginPath(); ctx.arc(this.x, this.y, this.size * 5, 0, Math.PI*2); ctx.fill(); }
+        else { ctx.beginPath(); ctx.arc(this.x, this.y, this.size/2, 0, Math.PI*2); ctx.fill(); }
+        ctx.restore();
+    }
+}
+
+class Bird {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.v = 0; this.angle = 0; this.r = 16;
+        this.shield = 0; this.boost = 0; this.slow = 0; this.invuln = 0;
+    }
+    jump() { this.v = -280; }
+    update(dt) {
+        let theme = THEMES[Game.getCurrentThemeKey()]; let gravity = theme.g;
+        if (this.slow > 0) gravity *= 0.5;
+        this.v += gravity * dt; this.y += this.v * dt;
+        ['shield', 'boost', 'slow', 'invuln'].forEach(p => { if(this[p] > 0) this[p] -= dt; });
+        this.updateHUD();
+        if (this.y + this.r > Game.height - 40 || this.y - this.r < 0) {
+            if (this.shield > 0 || this.invuln > 0) { this.v *= -0.5; this.y = Math.max(this.r, Math.min(Game.height - 41 - this.r, this.y)); }
+            else Game.gameOver();
+        }
+        this.angle = Math.min(Math.PI/4, Math.max(-Math.PI/6, this.v * 0.002));
+    }
+    updateHUD() {
+        ['shield', 'boost', 'slow'].forEach(type => {
+            const row = document.getElementById(type + '-timer');
+            const bar = document.getElementById(type + '-bar');
+            const up = UPGRADES[type];
+            const maxDur = up.base + Game.upgrades[type] * up.step;
+            if(this[type] > 0) { row.classList.add('active'); bar.style.width = (this[type]/maxDur*100)+'%'; }
+            else row.classList.remove('active');
+        });
+    }
+    applyPowerup(type) { 
+        const up = UPGRADES[type];
+        this[type] = up.base + Game.upgrades[type] * up.step; 
+    }
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
+        if (this.invuln > 0 && Math.floor(Date.now()/100) % 2 === 0) ctx.globalAlpha = 0.4;
+        if (this.shield > 0) {
+            ctx.beginPath(); ctx.arc(0, 0, this.r + 12, 0, Math.PI*2);
+            ctx.strokeStyle = '#00f3ff'; ctx.lineWidth = 3; ctx.setLineDash([5, 5]); ctx.stroke();
+        }
+        ctx.strokeStyle = "black"; ctx.lineWidth = 2; ctx.fillStyle = THEMES[Game.getCurrentThemeKey()].bird;
+        ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#ff6b6b"; ctx.beginPath(); ctx.moveTo(10, -2); ctx.lineTo(25, 3); ctx.lineTo(10, 8); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(5, -5, 3.5, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "black"; ctx.beginPath(); ctx.arc(6, -5, 1.5, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.beginPath(); ctx.moveTo(-15, 0); ctx.quadraticCurveTo(-5, -10, 5, 0); ctx.stroke();
+        ctx.restore();
+    }
+}
+
+class Pipe {
+    constructor(x, canvasHeight) {
+        const theme = THEMES[Game.getCurrentThemeKey()];
+        this.x = x; this.w = 75; this.gap = theme.gap;
+        this.center = 150 + Math.random() * (canvasHeight - 300);
+        this.passed = false;
+        if (Math.random() > 0.6) Game.items.push(new Item(this.x + this.w + 140, this.center));
+    }
+    update(dt) {
+        let speed = THEMES[Game.getCurrentThemeKey()].speed;
+        if (Game.bird && Game.bird.slow > 0) speed *= 0.6;
+        this.x -= speed * dt;
+    }
+    collides(bird) {
+        const br = bird.r - 4;
+        if (bird.x + br > this.x && bird.x - br < this.x + this.w) {
+            if (bird.y - br < this.center - this.gap/2 || bird.y + br > this.center + this.gap/2) return true;
+        }
+        return false;
+    }
+    draw(ctx) {
+        const color = THEMES[Game.getCurrentThemeKey()].pipe;
+        this.drawTube(ctx, this.x, 0, this.w, this.center - this.gap/2, color, true);
+        this.drawTube(ctx, this.x, this.center + this.gap/2, this.w, Game.height - (this.center + this.gap/2), color, false);
+    }
+    drawTube(ctx, x, y, w, h, color, isTop) {
+        ctx.save(); ctx.fillStyle = color; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
+        const capH = 35; const capW = w + 12; const capX = x - 6;
+        if (isTop) {
+            ctx.fillRect(x, 0, w, h - capH); ctx.strokeRect(x, -5, w, h - capH + 5);
+            ctx.fillRect(capX, h - capH, capW, capH); ctx.strokeRect(capX, h - capH, capW, capH);
+        } else {
+            ctx.fillRect(x, y + capH, w, h); ctx.strokeRect(x, y + capH, w, h + 5);
+            ctx.fillRect(capX, y, capW, capH); ctx.strokeRect(capX, y, capW, capH);
+        }
+        ctx.restore();
+    }
+}
+
+class Item {
+    constructor(x, y) {
+        this.x = x; this.y = y;
+        const r = Math.random();
+        this.type = r < 0.4 ? 'shield' : (r < 0.7 ? 'boost' : 'slow');
+        this.t = Math.random() * Math.PI * 2;
+    }
+    update(dt) {
+        let speed = THEMES[Game.getCurrentThemeKey()].speed;
+        if (Game.bird && Game.bird.slow > 0) speed *= 0.6;
+        this.x -= speed * dt; this.t += dt * 3;
+    }
+    collides(bird) { return Math.hypot(this.x - bird.x, this.y - bird.y) < 40; }
+    draw(ctx) {
+        ctx.save(); ctx.font = "32px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        const hover = Math.sin(this.t) * 12;
+        const emoji = this.type === 'shield' ? "🛡️" : (this.type === 'boost' ? "⭐" : "⏳");
+        ctx.fillText(emoji, this.x, this.y + hover); ctx.restore();
+    }
+}
+
+window.onload = () => Game.init();
 </script>
 </body>
 </html>
+

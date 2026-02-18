@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Raja Rani Chor Police</title>
+    <style>
+        :root {
+            --bg-deep: #050505;
+            --gold: #FFD700;
+            --gold-glow: rgba(255, 215, 0, 0.4);
+            --text: #FFFFFF;
+            --text-sub: #A1A1AA;
+            --card-bg: #1A1A1F;
+            --accent: #3B82F6;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--bg-deep);
+            color: var(--text);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            height: 100vh;
+            display: flex; justify-content: center;
+            overflow: hidden;
+        }
+
+        #app {
+            width: 100%; max-width: 450px;
+            height: 100%; position: relative;
+            background: radial-gradient(circle at top, #1a1a2e, #050505);
+            display: flex; flex-direction: column;
+        }
+
+        .screen {
+            position: absolute; inset: 0;
+            display: none; flex-direction: column;
+            padding: 30px 24px;
+            opacity: 0; transition: 0.4s ease;
+        }
+
+        .screen.active { display: flex; opacity: 1; z-index: 10; }
+
+        /* Typography */
+        h1 { font-size: 2.5rem; color: var(--gold); text-align: center; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 2px; }
+        .subtitle { text-align: center; color: var(--text-sub); font-size: 0.9rem; margin-bottom: 2rem; }
+
+        /* Buttons */
+        .btn {
+            background: linear-gradient(135deg, #B8860B, #FFD700);
+            color: #000; border: none; padding: 18px;
+            border-radius: 12px; font-size: 1.1rem; font-weight: 800;
+            text-transform: uppercase; cursor: pointer; margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-outline { background: transparent; border: 2px solid var(--gold); color: var(--gold); box-shadow: none; }
+
+        /* Home UI */
+        .hero { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .crown-icon { font-size: 5rem; margin-bottom: 20px; text-shadow: 0 0 20px var(--gold-glow); }
+
+        /* Player Config */
+        .config-box { background: rgba(255,255,255,0.05); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+        .input-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        input { flex: 1; background: #000; border: 1px solid #333; color: white; padding: 12px; border-radius: 8px; font-size: 1rem; }
+        input:disabled { opacity: 0.5; color: #888; }
+
+        /* Game Scene */
+        .chit-scene { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; perspective: 1000px; }
+        .chit { 
+            width: 250px; height: 350px; position: relative; transform-style: preserve-3d; transition: 0.6s; cursor: pointer;
+        }
+        .chit.flipped { transform: rotateY(180deg); }
+        .chit-face { 
+            position: absolute; inset: 0; backface-visibility: hidden; border-radius: 20px; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+        }
+        .front { background: #222; border: 2px solid #444; }
+        .back { background: #fff; color: #000; transform: rotateY(180deg); border: 4px solid var(--gold); }
+
+        /* Result Table */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { text-align: left; padding: 10px; color: var(--text-sub); font-size: 0.75rem; border-bottom: 1px solid #333; }
+        td { padding: 15px 10px; border-bottom: 1px solid #222; }
+        .pts-now { font-weight: bold; color: var(--gold); text-align: right; }
+        .pts-total { font-weight: bold; color: #fff; text-align: right; }
+
+        .ai-indicator { font-size: 0.7rem; background: #444; padding: 2px 6px; border-radius: 4px; margin-left: 5px; color: #ccc; }
+
+        /* Modal for AI count */
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+        .modal-content { background: #1a1a1a; padding: 30px; border-radius: 20px; width: 100%; text-align: center; border: 1px solid var(--gold); }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <!-- 1. HOME -->
+    <div id="screen-home" class="screen active">
+        <div class="hero">
+            <div class="crown-icon">👑</div>
+            <h1>Raja Rani</h1>
+            <p class="subtitle">Chor Police • Royal Edition</p>
+        </div>
+        <button class="btn" onclick="nav('screen-mode')">Play</button>
+    </div>
+
+    <!-- 2. MODE SELECTION -->
+    <div id="screen-mode" class="screen">
+        <div class="hero">
+            <h2>Select Game Mode</h2>
+            <p class="subtitle">Choose how you want to play</p>
+            <button class="btn" style="width:100%" onclick="setupPvP()">Player vs Player</button>
+            <button class="btn btn-outline" style="width:100%" onclick="showAiModal()">Player vs AI</button>
+        </div>
+        <button class="btn-outline btn" onclick="nav('screen-home')">Back</button>
+    </div>
+
+    <!-- AI Count Modal -->
+    <div id="ai-modal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-top:0">Number of AI</h3>
+            <p class="subtitle">Total players will be 4</p>
+            <div style="display:flex; gap:10px; margin-bottom:20px;">
+                <button class="btn" style="flex:1" onclick="setupPvAI(1)">1 AI</button>
+                <button class="btn" style="flex:1" onclick="setupPvAI(2)">2 AI</button>
+                <button class="btn" style="flex:1" onclick="setupPvAI(3)">3 AI</button>
+            </div>
+            <button class="btn-outline btn" onclick="closeAiModal()" style="width:100%">Cancel</button>
+        </div>
+    </div>
+
+    <!-- 3. PLAYER CONFIG -->
+    <div id="screen-config" class="screen">
+        <h2 id="config-title">Customize Players</h2>
+        <div class="config-box" id="player-inputs">
+            <!-- Dynamic Inputs -->
+        </div>
+        <button class="btn" onclick="startGame()">Start Round 1</button>
+    </div>
+
+    <!-- 4. REVEAL -->
+    <div id="screen-reveal" class="screen">
+        <div style="text-align:center;">
+            <div id="round-tag" style="color:var(--gold); font-weight:bold; margin-bottom:10px;">ROUND 1</div>
+            <h2 id="current-player-name">Name</h2>
+            <p id="instruction" class="subtitle">Tap card to see your role</p>
+        </div>
+        <div class="chit-scene">
+            <div class="chit" id="main-chit" onclick="handleChitTap()">
+                <div class="chit-face front">?</div>
+                <div class="chit-face back">
+                    <div id="reveal-icon" style="font-size:5rem;">👑</div>
+                    <div id="reveal-role" style="font-size:2rem; font-weight:bold;">RAJA</div>
+                    <div id="reveal-points" style="color:#888; margin-top:10px;">1000 Pts</div>
+                </div>
+            </div>
+        </div>
+        <button id="btn-next" class="btn" style="display:none" onclick="proceedTurn()">Next</button>
+    </div>
+
+    <!-- 5. POLICE GUESS -->
+    <div id="screen-guess" class="screen">
+        <h2 id="police-name" style="text-align:center; color:var(--accent);">Police</h2>
+        <p class="subtitle">Who is the Thief (Chor)?</p>
+        <div id="guess-options" style="flex:1; display:flex; flex-direction:column; gap:15px; justify-content:center;">
+            <!-- Buttons -->
+        </div>
+        <button id="btn-lock" class="btn" disabled onclick="handleGuess()">Lock Answer</button>
+    </div>
+
+    <!-- 6. RESULT -->
+    <div id="screen-result" class="screen">
+        <h1 id="result-text" style="font-size:2rem;">Status</h1>
+        <div style="flex:1; overflow-y:auto;">
+            <table>
+                <thead>
+                    <tr><th>Player</th><th style="text-align:right">Role</th><th style="text-align:right">Round</th><th style="text-align:right">Total</th></tr>
+                </thead>
+                <tbody id="result-body"></tbody>
+            </table>
+        </div>
+        <button class="btn" id="round-btn" onclick="continueToNext()">Next Round</button>
+    </div>
+
+    <!-- 7. FINAL -->
+    <div id="screen-final" class="screen">
+        <div class="hero">
+            <div style="font-size:5rem">🏆</div>
+            <h1 id="winner-name">Name</h1>
+            <p id="winner-score" class="subtitle">0000 Pts</p>
+        </div>
+        <button class="btn" onclick="location.reload()">New Game</button>
+    </div>
+</div>
+
+<script>
+    const ROLES = {
+        RAJA: { name: 'Raja', icon: '👑', pts: 1000 },
+        RANI: { name: 'Rani', icon: '👸', pts: 500 },
+        POLICE: { name: 'Police', icon: '👮', pts: 100 },
+        CHOR: { name: 'Chor', icon: '👺', pts: 100 }
+    };
+
+    let players = []; 
+    let roundNum = 1;
+    let turnIndex = 0;
+    let roundData = []; 
+    let chitState = 0; // 0: Closed, 1: Open, 2: ClosedReady
+    let isAiMode = false;
+    let aiCount = 0;
+
+    function nav(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        const el = document.getElementById(id);
+        el.style.display = 'flex';
+        requestAnimationFrame(() => el.classList.add('active'));
+    }
+
+    function showAiModal() { document.getElementById('ai-modal').style.display = 'flex'; }
+    function closeAiModal() { document.getElementById('ai-modal').style.display = 'none'; }
+
+    function setupPvP() {
+        isAiMode = false;
+        aiCount = 0;
+        renderInputs();
+        nav('screen-config');
+    }
+
+    function setupPvAI(count) {
+        isAiMode = true;
+        aiCount = count;
+        closeAiModal();
+        renderInputs();
+        nav('screen-config');
+    }
+
+    function renderInputs() {
+        const box = document.getElementById('player-inputs');
+        box.innerHTML = '';
+        const humanCount = 4 - aiCount;
+        
+        for(let i=0; i<4; i++) {
+            const isAi = i >= humanCount;
+            const row = document.createElement('div');
+            row.className = 'input-row';
+            row.innerHTML = `
+                <div style="color:var(--gold); width:30px;">${i+1}</div>
+                <input type="text" id="name-${i}" value="${isAi ? 'AI ' + (i - humanCount + 1) : 'Player ' + (i+1)}" ${isAi ? 'disabled' : ''}>
+                ${isAi ? '<span class="ai-indicator">AI</span>' : ''}
+            `;
+            box.appendChild(row);
+        }
+    }
+
+    function startGame() {
+        players = [];
+        const humanCount = 4 - aiCount;
+        for(let i=0; i<4; i++) {
+            players.push({
+                name: document.getElementById(`name-${i}`).value,
+                isAi: i >= humanCount,
+                totalScore: 0
+            });
+        }
+        roundNum = 1;
+        startRound();
+    }
+
+    function startRound() {
+        turnIndex = 0;
+        chitState = 0;
+        const keys = ['RAJA', 'RANI', 'POLICE', 'CHOR'];
+        keys.sort(() => Math.random() - 0.5);
+
+        roundData = players.map((p, i) => ({
+            playerIndex: i,
+            role: keys[i],
+            pts: 0
+        }));
+
+        document.getElementById('round-tag').innerText = `ROUND ${roundNum} / 10`;
+        updateTurnUI();
+        nav('screen-reveal');
+    }
+
+    function updateTurnUI() {
+        const p = players[roundData[turnIndex].playerIndex];
+        const r = ROLES[roundData[turnIndex].role];
+        
+        document.getElementById('current-player-name').innerText = p.name;
+        document.getElementById('main-chit').classList.remove('flipped');
+        document.getElementById('btn-next').style.display = 'none';
+        document.getElementById('instruction').innerText = p.isAi ? "AI is thinking..." : "Tap card to see your role";
+        
+        document.getElementById('reveal-icon').innerText = r.icon;
+        document.getElementById('reveal-role').innerText = r.name;
+        document.getElementById('reveal-points').innerText = `Role Pts: ${r.pts}`;
+
+        if(p.isAi) {
+            setTimeout(() => {
+                document.getElementById('main-chit').classList.add('flipped');
+                setTimeout(() => {
+                    document.getElementById('main-chit').classList.remove('flipped');
+                    proceedTurn();
+                }, 800);
+            }, 800);
+        }
+    }
+
+    function handleChitTap() {
+        const p = players[roundData[turnIndex].playerIndex];
+        if(p.isAi) return;
+
+        if(chitState === 0) {
+            document.getElementById('main-chit').classList.add('flipped');
+            document.getElementById('instruction').innerText = "Tap again to hide role";
+            chitState = 1;
+        } else if(chitState === 1) {
+            document.getElementById('main-chit').classList.remove('flipped');
+            document.getElementById('instruction').innerText = "Pass to next player";
+            document.getElementById('btn-next').style.display = 'block';
+            chitState = 2;
+        }
+    }
+
+    function proceedTurn() {
+        turnIndex++;
+        chitState = 0;
+        if(turnIndex < 4) {
+            updateTurnUI();
+        } else {
+            showGuessing();
+        }
+    }
+
+    function showGuessing() {
+        const policeEntry = roundData.find(x => x.role === 'POLICE');
+        const policePlayer = players[policeEntry.playerIndex];
+        
+        document.getElementById('police-name').innerText = policePlayer.name;
+        const box = document.getElementById('guess-options');
+        box.innerHTML = '';
+        document.getElementById('btn-lock').disabled = true;
+
+        roundData.forEach((rd, idx) => {
+            if(rd.role === 'POLICE') return;
+            const p = players[rd.playerIndex];
+            const b = document.createElement('button');
+            b.className = 'btn btn-outline';
+            b.innerText = p.name;
+            b.onclick = () => {
+                document.querySelectorAll('#guess-options .btn').forEach(x => x.classList.add('btn-outline'));
+                b.classList.remove('btn-outline');
+                document.getElementById('btn-lock').disabled = false;
+                document.getElementById('btn-lock').dataset.idx = idx;
+            };
+            box.appendChild(b);
+        });
+
+        nav('screen-guess');
+
+        if(policePlayer.isAi) {
+            setTimeout(() => {
+                const suspects = Array.from(document.querySelectorAll('#guess-options .btn'));
+                const randomSuspect = suspects[Math.floor(Math.random() * suspects.length)];
+                randomSuspect.click();
+                setTimeout(() => handleGuess(), 800);
+            }, 1000);
+        }
+    }
+
+    function handleGuess() {
+        const targetIdx = parseInt(document.getElementById('btn-lock').dataset.idx);
+        const target = roundData[targetIdx];
+        const caught = (target.role === 'CHOR');
+
+        roundData.forEach(rd => {
+            if(rd.role === 'RAJA') rd.pts = 1000;
+            else if(rd.role === 'RANI') rd.pts = 500;
+            else if(rd.role === 'POLICE') rd.pts = caught ? 100 : 0;
+            else if(rd.role === 'CHOR') rd.pts = caught ? 0 : 100;
+
+            players[rd.playerIndex].totalScore += rd.pts;
+        });
+
+        const resTxt = document.getElementById('result-text');
+        resTxt.innerText = caught ? "Thief Caught!" : "Thief Escaped!";
+        resTxt.style.color = caught ? "#4ade80" : "#f87171";
+
+        const tbody = document.getElementById('result-body');
+        tbody.innerHTML = '';
+        const order = ['RAJA', 'RANI', 'POLICE', 'CHOR'];
+        const sorted = [...roundData].sort((a,b) => order.indexOf(a.role) - order.indexOf(b.role));
+
+        sorted.forEach(rd => {
+            const p = players[rd.playerIndex];
+            tbody.innerHTML += `
+                <tr>
+                    <td>${p.name} ${p.isAi ? '<span class="ai-indicator">AI</span>' : ''}</td>
+                    <td style="text-align:right">${ROLES[rd.role].icon}</td>
+                    <td class="pts-now">+${rd.pts}</td>
+                    <td class="pts-total">${p.totalScore}</td>
+                </tr>
+            `;
+        });
+
+        document.getElementById('round-btn').innerText = roundNum < 10 ? "Start Next Round" : "Final Results";
+        nav('screen-result');
+    }
+
+    function continueToNext() {
+        if(roundNum < 10) {
+            roundNum++;
+            startRound();
+        } else {
+            const sorted = [...players].sort((a,b) => b.totalScore - a.totalScore);
+            document.getElementById('winner-name').innerText = sorted[0].name;
+            document.getElementById('winner-score').innerText = sorted[0].totalScore + " Total Points";
+            nav('screen-final');
+        }
+    }
+</script>
+
+</body>
+</html>
+

@@ -2,15 +2,20 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ultra Repeater - Numbered Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Repeater X Pro | Evolution</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@500&display=swap');
+
         :root {
             --neon: #00f2ff;
-            --accent: #7000ff;
-            --surface: #12121a;
-            --panel: #1c1c28;
-            --text-dim: #94a3b8;
+            --neon-glow: rgba(0, 242, 255, 0.4);
+            --love: #ff4d94;
+            --love-glow: rgba(255, 77, 148, 0.4);
+            --bg: #03040a;
+            --card: rgba(255, 255, 255, 0.04);
+            --accent: var(--neon);
+            --accent-glow: var(--neon-glow);
         }
 
         * {
@@ -18,342 +23,526 @@
             margin: 0;
             padding: 0;
             -webkit-tap-highlight-color: transparent;
+            font-family: 'Outfit', sans-serif;
         }
 
         body {
-            background: #050508;
-            color: #e2e8f0;
-            font-family: -apple-system, system-ui, sans-serif;
+            background: var(--bg);
+            color: #fff;
             height: 100vh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            transition: background 0.6s ease;
+        }
+
+        body.couple-active {
+            --bg: #0d0408;
+            --accent: var(--love);
+            --accent-glow: var(--love-glow);
+        }
+
+        /* Background Particle Canvas */
+        #bg-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: -1;
+            opacity: 0.4;
         }
 
         header {
-            padding: 15px 20px;
-            background: var(--surface);
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding: 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            z-index: 10;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.4), transparent);
         }
 
         .logo {
             font-weight: 800;
-            font-size: 1.1rem;
-            letter-spacing: 1px;
-            color: var(--neon);
+            font-size: 1.5rem;
+            letter-spacing: -1px;
+            color: var(--accent);
+            text-shadow: 0 0 15px var(--accent-glow);
+            transition: 0.3s;
+        }
+
+        .stats-pill {
+            background: rgba(255,255,255,0.06);
+            padding: 6px 12px;
+            border-radius: 50px;
+            border: 1px solid rgba(255,255,255,0.1);
+            font-size: 10px;
+            font-weight: 600;
             text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent);
+        }
+
+        .mode-container {
+            margin: 0 20px 10px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 5px;
+            display: flex;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            color: #888;
+            font-weight: 800;
+            font-size: 12px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-transform: uppercase;
+        }
+
+        .mode-btn.active {
+            background: var(--accent);
+            color: #000;
+            box-shadow: 0 8px 20px var(--accent-glow);
         }
 
         main {
             flex: 1;
+            padding: 10px 20px;
+            overflow-y: auto;
             display: flex;
             flex-direction: column;
-            padding: 12px;
-            overflow-y: auto;
-            gap: 12px;
-            padding-bottom: 100px;
+            gap: 20px;
+            padding-bottom: 120px;
         }
 
-        .card {
-            background: var(--panel);
-            border-radius: 16px;
-            padding: 16px;
-            border: 1px solid rgba(255,255,255,0.05);
+        .card-glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 28px;
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+
+        .label {
+            font-size: 10px;
+            font-weight: 800;
+            color: #777;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            display: block;
         }
 
         textarea {
             width: 100%;
-            background: rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 10px;
-            padding: 12px;
-            color: white;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1.5px solid rgba(255, 255, 255, 0.1);
+            border-radius: 18px;
+            padding: 18px;
+            color: #fff;
             font-size: 16px;
             resize: none;
             outline: none;
-            min-height: 70px;
+            min-height: 120px;
+            transition: 0.3s;
         }
 
-        .controls-grid {
+        textarea:focus {
+            border-color: var(--accent);
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .quick-action-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            padding: 14px;
+            border-radius: 16px;
+            font-weight: 700;
+            margin-top: 15px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .quick-action-btn:active { transform: scale(0.98); }
+
+        .settings-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 12px;
+            gap: 15px;
+            margin-top: 20px;
         }
 
-        .input-box {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        .input-box label {
-            font-size: 0.65rem;
+        .input-group label {
+            display: block;
+            font-size: 9px;
             text-transform: uppercase;
-            color: var(--text-dim);
-            font-weight: bold;
+            font-weight: 800;
+            margin-bottom: 8px;
+            color: #888;
         }
 
         input, select {
             background: rgba(255,255,255,0.05);
             border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px;
-            padding: 10px;
-            color: white;
-            font-size: 14px;
-            width: 100%;
-        }
-
-        .toggle-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-top: 12px;
-            background: rgba(0,0,0,0.2);
-            padding: 10px;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-
-        .toggle-container input {
-            width: 18px;
-            height: 18px;
-            accent-color: var(--neon);
-            cursor: pointer;
-        }
-
-        .toggle-label {
-            font-size: 14px;
+            border-radius: 14px;
+            padding: 14px;
             color: #fff;
+            width: 100%;
+            outline: none;
+            font-weight: 600;
         }
 
-        .output-card {
-            flex: 1;
+        .chips-scroll {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            margin-top: 20px;
+            padding-bottom: 5px;
+            scrollbar-width: none;
+        }
+        .chips-scroll::-webkit-scrollbar { display: none; }
+
+        .chip {
+            white-space: nowrap;
+            padding: 10px 18px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 50px;
+            font-size: 11px;
+            font-weight: 700;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #bbb;
+            transition: 0.3s;
+        }
+
+        .chip.active {
+            background: var(--accent);
+            color: #000;
+            border-color: transparent;
+        }
+
+        .output-container {
             background: #000;
-            border-radius: 16px;
-            border: 1px solid var(--neon);
+            border-radius: 28px;
+            border: 2px solid var(--accent);
+            box-shadow: 0 0 30px var(--accent-glow);
+            min-height: 280px;
+            max-height: 400px;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
-            min-height: 180px;
         }
 
-        #output {
-            padding: 15px;
-            font-family: 'SF Mono', 'Courier New', monospace;
-            font-size: 14px;
-            color: #4ade80;
+        #output-area {
+            padding: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: var(--accent);
             white-space: pre-wrap;
             word-break: break-all;
             overflow-y: auto;
             flex: 1;
         }
 
-        .bottom-bar {
+        .nav-bar {
             position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(18, 18, 26, 0.98);
-            backdrop-filter: blur(10px);
-            padding: 12px 15px calc(12px + env(safe-area-inset-bottom));
-            border-top: 1px solid rgba(255,255,255,0.1);
+            bottom: 0; left: 0; right: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            padding: 15px 25px calc(20px + env(safe-area-inset-bottom));
             display: flex;
-            gap: 8px;
-            z-index: 100;
+            gap: 15px;
+            z-index: 1000;
+            border-top: 1px solid rgba(255,255,255,0.1);
         }
 
-        button {
+        .btn-main {
+            background: var(--accent);
+            color: #000;
             flex: 1;
-            padding: 14px;
-            border-radius: 12px;
             border: none;
-            font-weight: 700;
-            cursor: pointer;
-            transition: 0.2s;
+            border-radius: 20px;
+            font-weight: 800;
+            font-size: 14px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            box-shadow: 0 10px 25px var(--accent-glow);
+        }
+
+        .btn-square {
+            width: 60px;
+            height: 60px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
+            border: 1px solid rgba(255,255,255,0.1);
         }
 
-        .btn-primary { background: var(--neon); color: #000; }
-        .btn-secondary { background: rgba(255,255,255,0.08); color: white; max-width: 55px; }
-        button:active { transform: scale(0.92); }
-
-        .ui-icon-copy {
-            width: 12px; height: 16px; border: 2px solid currentColor; border-radius: 2px;
-            position: relative;
-        }
-        .ui-icon-copy::after {
-            content: ''; position: absolute; top: -4px; left: 3px;
-            width: 12px; height: 16px; border: 2px solid currentColor; border-radius: 2px; opacity: 0.4;
-        }
-
-        .ui-icon-trash {
-            width: 12px; height: 14px; border: 2px solid currentColor; border-top: 0;
-            position: relative;
-        }
-        .ui-icon-trash::after {
-            content: ''; position: absolute; top: -3px; left: -2px; width: 16px; height: 2px; background: currentColor;
-        }
-
-        #notification {
+        .toast {
             position: fixed;
-            top: 20px;
-            left: 50%;
+            top: 30px; left: 50%;
             transform: translateX(-50%) translateY(-100px);
-            background: var(--accent);
-            padding: 8px 20px;
-            border-radius: 30px;
-            font-size: 13px;
-            font-weight: bold;
-            transition: 0.3s;
-            z-index: 1000;
+            background: #fff; color: #000;
+            padding: 12px 25px; border-radius: 50px;
+            font-weight: 800; font-size: 12px;
+            transition: 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 2000;
         }
+        .toast.show { transform: translateX(-50%) translateY(0); }
 
-        .show-toast { transform: translateX(-50%) translateY(0px) !important; }
-
-        .stats-badge {
-            font-size: 10px;
-            padding: 2px 6px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 4px;
-            color: var(--text-dim);
-        }
+        /* Animations */
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+        .blinking { animation: pulse 1.5s infinite; }
     </style>
 </head>
-<body>
+<body id="app-body">
 
-    <div id="notification">Action Performed</div>
+    <canvas id="bg-canvas"></canvas>
+    <div id="toast" class="toast">Action Complete</div>
 
     <header>
-        <div class="logo">Repeater <span style="color:white">X</span></div>
-        <div class="stats-badge" id="statLabel">Memory: 0KB</div>
+        <div class="logo" id="logo-text">REPEATER X PRO</div>
+        <div class="stats-pill" id="stat-label">BUFFER: 0 KB</div>
     </header>
 
+    <div class="mode-container">
+        <button class="mode-btn active" id="btn-std" onclick="setMode('standard')">Matrix</button>
+        <button class="mode-btn" id="btn-love" onclick="setMode('love')">Infinity Love</button>
+    </div>
+
     <main>
-        <div class="card">
-            <textarea id="input" placeholder="Enter text to repeat..."></textarea>
+        <div class="card-glass">
+            <span class="label" id="panel-label">Input Core</span>
+            <textarea id="user-input" placeholder="Enter message to multiply..."></textarea>
             
-            <div class="controls-grid">
-                <div class="input-box">
-                    <label>Count</label>
-                    <input type="number" id="count" value="50" min="1" max="100000">
+            <button class="quick-action-btn" onclick="specialAction()">
+                <span id="action-icon">⚡</span> <span id="action-text">Apply Glitch</span>
+            </button>
+
+            <div class="settings-grid">
+                <div class="input-group">
+                    <label>Blast Amount</label>
+                    <input type="number" id="count-input" value="100">
                 </div>
-                <div class="input-box">
+                <div class="input-group">
                     <label>Separator</label>
-                    <select id="sep">
+                    <select id="sep-input">
                         <option value="\n">New Line</option>
-                        <option value=" ">Space</option>
-                        <option value=", ">Comma</option>
-                        <option value="custom">Custom...</option>
+                        <option value=" ">Single Space</option>
+                        <option value=" 🔥 ">Fire Icon</option>
+                        <option value=" ❤️ ">Red Heart</option>
+                        <option value=" | ">Divider</option>
                     </select>
                 </div>
             </div>
 
-            <input type="text" id="customInput" placeholder="Enter custom separator" style="display:none; margin-top:10px;">
-
-            <label class="toggle-container" for="addNum">
-                <input type="checkbox" id="addNum">
-                <span class="toggle-label">Include Row Numbers (1. 2. 3.)</span>
-            </label>
+            <div class="chips-scroll">
+                <div class="chip" id="chip-num" onclick="toggleOption('num')">Line Numbers</div>
+                <div class="chip" id="chip-rev" onclick="toggleOption('rev')">Mirror Text</div>
+                <div class="chip" id="chip-bold" onclick="toggleOption('bold')">Heavy Font</div>
+                <div class="chip" id="chip-random" onclick="toggleOption('random')">Random Emoji</div>
+            </div>
         </div>
 
-        <div class="output-card">
-            <div id="output">Output preview...</div>
+        <div class="output-container">
+            <div id="output-area" class="blinking">Waiting for command...</div>
         </div>
     </main>
 
-    <div class="bottom-bar">
-        <button class="btn-secondary" onclick="clearAll()">
-            <div class="ui-icon-trash"></div>
+    <div class="nav-bar">
+        <button class="btn-square" onclick="clearAll()" title="Clear">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ff4444" stroke-width="2.5"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
         </button>
-        <button class="btn-primary" onclick="generate()">
-            GENERATE
-        </button>
-        <button class="btn-secondary" onclick="copy()">
-            <div class="ui-icon-copy"></div>
+        <button class="btn-main" onclick="generateBlast()">Generate Blast</button>
+        <button class="btn-square" onclick="copyOutput()" title="Copy">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         </button>
     </div>
 
     <script>
-        const output = document.getElementById('output');
-        const input = document.getElementById('input');
-        const count = document.getElementById('count');
-        const sep = document.getElementById('sep');
-        const custom = document.getElementById('customInput');
-        const addNum = document.getElementById('addNum');
-        const toast = document.getElementById('notification');
+        /** ENGINE LOGIC **/
+        let appMode = 'standard';
+        let config = { num: false, rev: false, bold: false, random: false };
+        
+        const loveTemplates = [
+            "My love for you grows every second 💖",
+            "You are my forever and always 💍",
+            "Missing your smile right now 🌹",
+            "You are the best part of my day ✨",
+            "Always thinking of you 💌",
+            "I love you more than words can express ❤️",
+            "My heart beats only for you 💓"
+        ];
 
-        sep.addEventListener('change', () => {
-            custom.style.display = sep.value === 'custom' ? 'block' : 'none';
-        });
+        const boldMap = {'a':'𝗮','b':'𝗯','c':'𝗰','d':'𝗱','e':'𝗲','f':'𝗳','g':'𝗴','h':'𝗵','i':'𝗶','j':'𝗷','k':'𝗸','l':'𝗹','m':'𝗺','n':'𝗻','o':'𝗼','p':'𝗽','q':'𝗾','r':'𝗿','s':'𝘀','t':'𝘁','u':'𝘂','v':'𝘃','w':'𝘄','x':'𝘅','y':'𝘆','z':'𝘇','A':'𝗔','B':'𝗕','C':'𝗖','D':'𝗗','E':'𝗘','F':'𝗙','G':'𝗚','H':'𝗛','I':'𝗜','J':'𝗝','K':'𝗞','L':'𝗟','M':'𝗠','N':'𝗡','O':'𝗢','P':'𝗣','Q':'𝗤','R':'𝗥','S':'𝗦','T':'𝗧','U':'𝗨','V':'𝗩','W':'𝗪','X':'𝗫','Y':'𝗬','Z':'𝗭'};
 
-        function notify(msg) {
-            toast.innerText = msg;
-            toast.classList.add('show-toast');
-            setTimeout(() => toast.classList.remove('show-toast'), 2000);
+        // Canvas Particles
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
         }
 
-        function generate() {
-            const val = input.value;
-            const iterations = parseInt(count.value);
-            const shouldNumber = addNum.checked;
-            let s = sep.value === 'custom' ? custom.value : sep.value;
-            if (s === '\\n') s = '\n';
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 1;
+                this.speedX = Math.random() * 0.5 - 0.25;
+                this.speedY = Math.random() * 0.5 - 0.25;
+                this.alpha = Math.random() * 0.5;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) this.reset();
+            }
+            draw() {
+                ctx.fillStyle = appMode === 'love' ? `rgba(255, 77, 148, ${this.alpha})` : `rgba(0, 242, 255, ${this.alpha})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
 
-            if (!val) return notify("Input is empty!");
-            if (iterations > 100000) return notify("Limit: 100,000");
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < 50; i++) particles.push(new Particle());
+        }
 
-            output.innerText = "Building...";
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        initParticles();
+        animate();
+
+        // App Control
+        function setMode(m) {
+            appMode = m;
+            document.body.className = m === 'love' ? 'couple-active' : '';
+            document.getElementById('btn-std').classList.toggle('active', m === 'standard');
+            document.getElementById('btn-love').classList.toggle('active', m === 'love');
             
+            document.getElementById('logo-text').innerText = m === 'love' ? 'INFINITY LOVE' : 'REPEATER X PRO';
+            document.getElementById('action-text').innerText = m === 'love' ? 'Surprise Love Msg' : 'Apply Glitch';
+            document.getElementById('action-icon').innerText = m === 'love' ? '💖' : '⚡';
+            
+            const sep = document.getElementById('sep-input');
+            sep.value = m === 'love' ? ' ❤️ ' : '\\n';
+            showToast(`Switched to ${m} mode`);
+        }
+
+        function toggleOption(opt) {
+            config[opt] = !config[opt];
+            document.getElementById(`chip-${opt}`).classList.toggle('active', config[opt]);
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2000);
+        }
+
+        function specialAction() {
+            const input = document.getElementById('user-input');
+            if (appMode === 'love') {
+                input.value = loveTemplates[Math.floor(Math.random() * loveTemplates.length)];
+                showToast("Romantic msg loaded!");
+            } else {
+                let text = input.value || "SYSTEM ERROR";
+                let glitch = text.split('').map(c => c + (Math.random() > 0.8 ? '\u030D\u0320\u0342' : '')).join('');
+                input.value = glitch;
+                showToast("Matrix glitch applied!");
+            }
+        }
+
+        function generateBlast() {
+            const output = document.getElementById('output-area');
+            let baseText = document.getElementById('user-input').value;
+            const count = parseInt(document.getElementById('count-input').value) || 0;
+            let sep = document.getElementById('sep-input').value;
+            
+            if (!baseText) return showToast("Enter text first!");
+            if (count > 500000) return showToast("Safety limit: 500k");
+
+            output.classList.remove('blinking');
+            output.innerText = "Processing Blast... 0%";
+
+            if (sep === '\\n') sep = '\n';
+
+            // Non-blocking processing for large amounts
             setTimeout(() => {
-                try {
-                    let result = "";
-                    if (shouldNumber) {
-                        // Map and join for high performance with numbers
-                        result = Array.from({ length: iterations }, (_, i) => `${i + 1}. ${val}`).join(s);
-                    } else {
-                        result = new Array(iterations).fill(val).join(s);
-                    }
-                    
-                    output.innerText = result;
-                    const size = (result.length / 1024).toFixed(1);
-                    document.getElementById('statLabel').innerText = `Size: ${size}KB`;
-                } catch (e) {
-                    notify("Out of memory!");
+                if (config.rev) baseText = baseText.split('').reverse().join('');
+                if (config.bold) {
+                    baseText = baseText.split('').map(c => boldMap[c] || c).join('');
                 }
-            }, 20);
+
+                let resultArr = [];
+                for (let i = 0; i < count; i++) {
+                    let line = baseText;
+                    if (config.num) line = `${i+1}. ${line}`;
+                    if (config.random) {
+                        const emojis = appMode === 'love' ? ["💘","💍","🍬","🌸","🧸"] : ["⚡","👾","🔥","💎","🌀"];
+                        line += " " + emojis[Math.floor(Math.random()*emojis.length)];
+                    }
+                    resultArr.push(line);
+                }
+
+                const final = resultArr.join(sep);
+                output.innerText = final;
+                
+                const kb = Math.round(final.length / 1024);
+                document.getElementById('stat-label').innerText = `BUFFER: ${kb} KB`;
+                showToast("Blast Complete!");
+            }, 50);
         }
 
-        function copy() {
-            const txt = output.innerText;
-            if (!txt || txt === "Output preview...") return notify("Nothing to copy!");
+        function copyOutput() {
+            const text = document.getElementById('output-area').innerText;
+            if (text.startsWith("Waiting")) return;
             
-            const temp = document.createElement('textarea');
-            temp.value = txt;
-            document.body.appendChild(temp);
-            temp.select();
+            const area = document.createElement('textarea');
+            area.value = text;
+            document.body.appendChild(area);
+            area.select();
             document.execCommand('copy');
-            document.body.removeChild(temp);
-            
-            notify("Copied!");
+            document.body.removeChild(area);
+            showToast("Copied to clipboard!");
         }
 
         function clearAll() {
-            input.value = "";
-            output.innerText = "Output preview...";
-            document.getElementById('statLabel').innerText = "Memory: 0KB";
+            document.getElementById('user-input').value = "";
+            document.getElementById('output-area').innerText = "Waiting for command...";
+            document.getElementById('output-area').classList.add('blinking');
+            document.getElementById('stat-label').innerText = "BUFFER: 0 KB";
+            showToast("Workspace Reset");
         }
-
-        function setHeight() {
-            document.body.style.height = window.innerHeight + 'px';
-        }
-        window.addEventListener('resize', setHeight);
-        setHeight();
     </script>
 </body>
 </html>
+
